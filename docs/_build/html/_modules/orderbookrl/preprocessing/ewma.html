@@ -1,0 +1,333 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>orderbookrl.preprocessing.ewma &mdash; OrderBookRL 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> OrderBookRL
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">OrderBookRL</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+      <li>orderbookrl.preprocessing.ewma</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for orderbookrl.preprocessing.ewma</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="sd">&quot;&quot;&quot;Exponentially-weighted moving average.</span>
+
+<span class="sd">The class in this module wraps a Exponentially Weighted Moving Average</span>
+<span class="sd">algorithm (EWMA [1]), based on a talk on &quot;Quantifying Abnormal Behavior&quot; by</span>
+<span class="sd">VividCortex [2]. They provide an excellent discussion of EWMAs, along with an</span>
+<span class="sd">implementation in Go, in their github repo [3].</span>
+
+<span class="sd">This module contains a generic implementation of the EWMA algorithm. It has a</span>
+<span class="sd">default warm-up period of 1 and it uses an exponential decay. It supports a</span>
+<span class="sd">custom age which must be stored, and thus uses more memory. It will report a</span>
+<span class="sd">value of 0.0 until you have added the required number of samples to pass the</span>
+<span class="sd">warmup period. It uses some memory to store the number of samples added to it.</span>
+<span class="sd">As a result it uses a little over twice the memory of a simpler EWMA.</span>
+
+<span class="sd">The current implementation assumes an implicit time interval of 1.0 between</span>
+<span class="sd">every sample added. That is, the passage of time is treated as though it&#39;s the</span>
+<span class="sd">same as the arrival of samples. If you need time-based decay when samples are</span>
+<span class="sd">not arriving precisely at set intervals, then this package will not support your</span>
+<span class="sd">needs at present.</span>
+
+<span class="sd">Notes</span>
+<span class="sd">-----</span>
+<span class="sd">An exponentially weighted moving average is a way to continuously compute a</span>
+<span class="sd">type of average for a series of numbers, as the numbers arrive. After a value</span>
+<span class="sd">in the series is added to the average, its weight in the average decreases</span>
+<span class="sd">exponentially over time. This biases the average towards more recent data.</span>
+<span class="sd">EWMAs are useful for several reasons, chiefly their inexpensive computational</span>
+<span class="sd">and memory cost, as well as the fact that they represent the recent central</span>
+<span class="sd">tendency of the series of values.</span>
+
+<span class="sd">The overall algorithm works thus, in pseudocode:</span>
+<span class="sd">    * Multiply the next number in the series by alpha.</span>
+<span class="sd">    * Multiply the current value of the average by 1 minus alpha.</span>
+<span class="sd">    * Add the result of steps 1 and 2, and store it as the new current value of</span>
+<span class="sd">      the average.</span>
+<span class="sd">    * Repeat for each number in the series.</span>
+
+<span class="sd">There are special-case behaviors for how to initialize the current value, and</span>
+<span class="sd">these vary between implementations. One approach is to start with the first</span>
+<span class="sd">value in the series; another is to average the first n or so values in the</span>
+<span class="sd">series using an arithmetic average, and then begin the incremental updating of</span>
+<span class="sd">the average. Each method has pros and cons.</span>
+
+<span class="sd">Extras</span>
+<span class="sd">------</span>
+<span class="sd">The EWMA algorithm requires a decay factor, alpha. The larger the alpha, the</span>
+<span class="sd">more the average is biased towards recent history. The alpha must be between 0</span>
+<span class="sd">and 1, and is typically a fairly small number, such as 0.04. Consider a</span>
+<span class="sd">fixed-size sliding-window moving average (not an exponentially weighted moving</span>
+<span class="sd">average) that averages over the previous N samples. What is the average age of</span>
+<span class="sd">each sample? It is N/2. Now suppose that you wish to construct a EWMA whose</span>
+<span class="sd">samples have the same average age. The formula to compute the alpha required</span>
+<span class="sd">for this is: alpha = 2/(N+1). Proof is in the book &quot;Production and Operations</span>
+<span class="sd">Analysis&quot; by Steven Nahmias. So, for example, if you have a time-series with</span>
+<span class="sd">samples once per second, and you want to get the moving average over the</span>
+<span class="sd">previous minute, you should use an alpha of 0.032786885 (i.e., 2 / (60 + 1)).</span>
+
+<span class="sd">References</span>
+<span class="sd">----------</span>
+<span class="sd">[1]: http://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average</span>
+<span class="sd">[2]: https://vividcortex.com/blog/2013/07/23/a-fast-go-library-for-exponential</span>
+<span class="sd">     -moving-averages/</span>
+<span class="sd">[3]: https://github.com/VividCortex/ewma</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1"># Copyright (C) 2013 VividCortex &lt;https://vividcortex.com&gt;</span>
+<span class="c1"># Copyright (C) 2014, Carson Farmer &lt;carsonfarmer@gmail.com&gt;</span>
+<span class="c1"># All rights reserved. MIT Licensed.</span>
+
+
+<div class="viewcode-block" id="EWMA"><a class="viewcode-back" href="../../../source/orderbookrl.preprocessing.html#orderbookrl.preprocessing.ewma.EWMA">[docs]</a><span class="k">class</span> <span class="nc">EWMA</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Class to calculate a moving average.</span>
+
+<span class="sd">    Computes a moving average over a time-series stream of numbers. The average</span>
+<span class="sd">    may be over a window or exponentially decaying. If no age is given, this</span>
+<span class="sd">    function will return a default exponentially weighted implementation</span>
+<span class="sd">    that consumes minimal memory. The age is related to the decay factor</span>
+<span class="sd">    alpha by 2.0 / (`age` + 1). It signifies the average age of the samples as</span>
+<span class="sd">    time goes to infinity.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    age : numeric (default=30)</span>
+<span class="sd">        By default, we average over a one-minute period, which means the</span>
+<span class="sd">        average age of the metrics in the period is 30 seconds.</span>
+<span class="sd">    warmup : numeric (default=1)</span>
+<span class="sd">        For best results, the moving average should not be initialized to</span>
+<span class="sd">        the samples it sees immediately. The book &quot;Production and Operations</span>
+<span class="sd">        Analysis&quot; by Steven Nahmias suggests initializing the moving average</span>
+<span class="sd">        to the mean of the first 10 samples. Until the Ewma has seen</span>
+<span class="sd">        this many samples, it is not &quot;ready&quot; to be queried for the value of</span>
+<span class="sd">        the moving average.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="EWMA.__init__"><a class="viewcode-back" href="../../../source/orderbookrl.preprocessing.html#orderbookrl.preprocessing.ewma.EWMA.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">age</span><span class="o">=</span><span class="mf">30.0</span><span class="p">,</span> <span class="n">warmup</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">EWMA</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_decay</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">age</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_value</span> <span class="o">=</span> <span class="mf">0.0</span></div>
+        <span class="c1"># self._count = 0</span>
+        <span class="c1"># self._warmup = warmup if warmup &gt; 0 else 1</span>
+
+<div class="viewcode-block" id="EWMA.add"><a class="viewcode-back" href="../../../source/orderbookrl.preprocessing.html#orderbookrl.preprocessing.ewma.EWMA.add">[docs]</a>    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Adds a value to the series and updates the moving average.&quot;&quot;&quot;</span>
+        <span class="c1"># if self._count &lt; self._warmup:</span>
+        <span class="c1">#     self._count += 1</span>
+        <span class="c1">#     self._value += value</span>
+        <span class="c1"># elif self._count == self._warmup:</span>
+        <span class="c1">#     self._value = self._value / float(self._warmup)</span>
+        <span class="c1">#     self._count += 1</span>
+        <span class="c1"># else:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_value</span> <span class="o">=</span> <span class="p">(</span><span class="n">value</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_decay</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decay</span><span class="p">))</span></div>
+
+    <span class="c1"># @property</span>
+    <span class="c1"># def count(self):</span>
+    <span class="c1">#     &quot;&quot;&quot;The number of samples added to this instance.&quot;&quot;&quot;</span>
+    <span class="c1">#     return self._count</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns the current value of the moving average.&quot;&quot;&quot;</span>
+        <span class="c1"># if self._count &lt;= self._warmup:</span>
+        <span class="c1">#     return 0.0</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span>
+
+    <span class="nd">@value</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Sets the EWMA&#39;s value.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_value</span> <span class="o">=</span> <span class="n">value</span></div>
+        <span class="c1"># if self._count &lt;= self._warmup:</span>
+        <span class="c1">#     self._count = self._warmup + 1  # Force warmup period</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Olle Dahlen.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.1',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

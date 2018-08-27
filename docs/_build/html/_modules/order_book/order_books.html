@@ -1,0 +1,558 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>order_book.order_books &mdash; OrderBookRL 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> OrderBookRL
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">OrderBookRL</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>order_book.order_books</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for order_book.order_books</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">abc</span>
+<span class="kn">from</span> <span class="nn">custom_inherit</span> <span class="k">import</span> <span class="n">DocInheritMeta</span>
+
+<span class="kn">from</span> <span class="nn">order_book.constants</span> <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">order_book.price_levels</span> <span class="k">import</span> <span class="n">PriceLevels</span><span class="p">,</span> <span class="n">SortedDictPriceLevels</span>
+<span class="kn">from</span> <span class="nn">order_book.price_levels</span> <span class="k">import</span> <span class="n">RBTreePriceLevels</span><span class="p">,</span> <span class="n">AVLTreePriceLevels</span><span class="p">,</span> <span class="n">ListPriceLevels</span>
+<span class="kn">from</span> <span class="nn">cy_order_book.order_book</span> <span class="k">import</span> <span class="n">CyListPriceLevels</span>
+
+
+<div class="viewcode-block" id="get_price_levels"><a class="viewcode-back" href="../../source/order_book.html#order_book.order_books.get_price_levels">[docs]</a><span class="k">def</span> <span class="nf">get_price_levels</span><span class="p">(</span><span class="n">price_levels_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">price_level_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PriceLevels</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a type or price levels based on the parameters</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    price_levels_type: str</span>
+<span class="sd">        Type or price levels for the order book.</span>
+<span class="sd">    price_level_type: str</span>
+<span class="sd">        Type of order level for the price levels</span>
+<span class="sd">    kwargs</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">        price_levels: PriceLevels</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">price_levels_type</span> <span class="o">==</span> <span class="s1">&#39;sorted_dict&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">SortedDictPriceLevels</span><span class="p">(</span><span class="n">price_level_type</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">price_levels_type</span> <span class="o">==</span> <span class="s1">&#39;fast_rb&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">RBTreePriceLevels</span><span class="p">(</span><span class="n">price_level_type</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">price_levels_type</span> <span class="o">==</span> <span class="s1">&#39;fast_avl&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">AVLTreePriceLevels</span><span class="p">(</span><span class="n">price_level_type</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">price_levels_type</span> <span class="o">==</span> <span class="s1">&#39;list&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ListPriceLevels</span><span class="p">(</span><span class="n">price_level_type</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">price_levels_type</span> <span class="o">==</span> <span class="s1">&#39;cylist&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">CyListPriceLevels</span><span class="p">(</span><span class="n">price_level_type</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="OrderBook"><a class="viewcode-back" href="../../source/order_book.html#order_book.order_books.OrderBook">[docs]</a><span class="k">class</span> <span class="nc">OrderBook</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">DocInheritMeta</span><span class="p">(</span><span class="n">style</span><span class="o">=</span><span class="s2">&quot;numpy&quot;</span><span class="p">,</span> <span class="n">abstract_base_class</span><span class="o">=</span><span class="kc">True</span><span class="p">)):</span>
+    <span class="sd">&quot;&quot;&quot; A abstract class defining a order book interface.</span>
+
+<span class="sd">    The main functions are the functions for the messages. Sending a limit order, market order etc. The order book handles</span>
+<span class="sd">    the matching and storing of limit orders.</span>
+
+<span class="sd">    Important notes is the speed of adding a limit order, cancelling a limit order or updating a limit order.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    orders : dict</span>
+<span class="sd">        All current orders in the order book, key is the order id</span>
+<span class="sd">    order_id : int</span>
+<span class="sd">        The internal order id set by the order book. Is incremented for each order sent to the order book.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="OrderBook.__init__"><a class="viewcode-back" href="../../source/order_book.html#order_book.order_books.OrderBook.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">price_level_type</span><span class="o">=</span><span class="s1">&#39;cydeque&#39;</span><span class="p">,</span> <span class="n">price_levels_type</span><span class="o">=</span><span class="s1">&#39;cylist&#39;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span> <span class="o">=</span> <span class="n">get_price_levels</span><span class="p">(</span><span class="n">price_levels_type</span><span class="p">,</span> <span class="n">price_level_type</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orders</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">order_id</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+<div class="viewcode-block" id="OrderBook.limit"><a class="viewcode-back" href="../../source/order_book.html#order_book.order_books.OrderBook.limit">[docs]</a>    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span> <span class="nf">limit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">price</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">side</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">trader_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handles a limit order sent to the order book. Matches the limit order if possible, otherwise puts it in the order book.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        price: float</span>
+<span class="sd">            Price of the order.</span>
+<span class="sd">        side: int</span>
+<span class="sd">            BUY or SELL, see :py:mod:´OrderBookRL.order_book.constants´</span>
+<span class="sd">        size: float</span>
+<span class="sd">            Size of the order.</span>
+<span class="sd">        trader_id: int</span>
+<span class="sd">            Id of the trader sending the order</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            trades, order_in_book</span>
+<span class="sd">                trades: list</span>
+<span class="sd">                    If trades have occurred due the the message, all the trades are returned. Otherwise empty list</span>
+<span class="sd">                order_in_book: tuple</span>
+<span class="sd">                    If a limit order has been placed which size has not fully been matched, the remaining order in book</span>
+<span class="sd">                    is returned. Otherwise -1.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+<div class="viewcode-block" id="OrderBook.market_order"><a class="viewcode-back" href="../../source/order_book.html#order_book.order_books.OrderBook.market_order">[docs]</a>    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span> <span class="nf">market_order</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">side</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">trader_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handles a market order sent to the order book. Matches the market order if possible.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        side: int</span>
+<span class="sd">            BUY or SELL, see :py:mod:´OrderBookRL.order_book.constants´</span>
+<span class="sd">        size: float</span>
+<span class="sd">            Size of the order.</span>
+<span class="sd">        trader_id: int</span>
+<span class="sd">            Id of the trader sending the order</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            trades: list</span>
+<span class="sd">                If trades have occurred due the the message, all the trades are returned. Otherwise empty list</span>
+
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+<div class="viewcode-block" id="OrderBook.market_order_funds"><a class="viewcode-back" href="../../source/order_book.html#order_book.order_books.OrderBook.market_order_funds">[docs]</a>    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span> <span class="nf">market_order_funds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">funds</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">side</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">trader_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handles a market order sent to the order book. Matches the market order if possible.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        funds: float</span>
+<span class="sd">            Size of the order.</span>
+<span class="sd">        side: int</span>
+<span class="sd">            BUY or SELL, see :py:mod:´OrderBookRL.order_book.constants´</span>
+<span class="sd">        trader_id: int</span>
+<span class="sd">            Id of the trader sending the order</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            trades: list</span>
+<span class="sd">                If trades have occurred due the the message, all the trades are returned. Otherwise empty list</span>
+
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+<div class="viewcode-block" id="OrderBook.cancel"><a class="viewcode-back" href="../../source/order_book.html#order_book.order_books.OrderBook.cancel">[docs]</a>    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span> <span class="nf">cancel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">order_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Attempts to cancel a order by its order id</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        order_id: int</span>
+<span class="sd">            The order id of the order to be cancelled</span>
+
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+<div class="viewcode-block" id="OrderBook.update"><a class="viewcode-back" href="../../source/order_book.html#order_book.order_books.OrderBook.update">[docs]</a>    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">order_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Attempts to update a order by its order id</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        order_id: int</span>
+<span class="sd">            The order id of the order to be updated</span>
+<span class="sd">        size: float</span>
+<span class="sd">            The new size of the order</span>
+
+<span class="sd">        &quot;&quot;&quot;</span></div></div>
+
+
+<div class="viewcode-block" id="PyOrderBook"><a class="viewcode-back" href="../../source/order_book.html#order_book.order_books.PyOrderBook">[docs]</a><span class="k">class</span> <span class="nc">PyOrderBook</span><span class="p">(</span><span class="n">OrderBook</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;An implementation of the abstract class :py:class:`OrderBook`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="PyOrderBook.limit"><a class="viewcode-back" href="../../source/order_book.html#order_book.order_books.PyOrderBook.limit">[docs]</a>    <span class="k">def</span> <span class="nf">limit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">price</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">side</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">trader_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="n">trades</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">side</span> <span class="o">==</span> <span class="n">BUY</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">exist_sell_orders</span><span class="p">():</span>
+                <span class="n">ask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_ask</span><span class="p">()</span>
+                <span class="k">while</span> <span class="n">price</span> <span class="o">&gt;=</span> <span class="n">ask</span><span class="p">:</span>
+                    <span class="n">price_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_level</span><span class="p">(</span><span class="n">SELL</span><span class="p">,</span> <span class="n">ask</span><span class="p">)</span>
+                    <span class="k">while</span> <span class="n">price_level</span><span class="o">.</span><span class="n">is_not_empty</span><span class="p">():</span>
+                        <span class="n">level_entry</span> <span class="o">=</span> <span class="n">price_level</span><span class="o">.</span><span class="n">get_first</span><span class="p">()</span>
+                        <span class="n">level_entry_size</span> <span class="o">=</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_SIZE</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="n">level_entry_size</span><span class="p">:</span>
+                            <span class="n">price_level</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">level_entry</span><span class="p">,</span> <span class="o">-</span><span class="n">size</span><span class="p">)</span>
+                            <span class="c1"># Trade : (trader_id, counter_part_id, price, size, order_id)</span>
+                            <span class="n">trades</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">trader_id</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_TRADER_ID</span><span class="p">],</span> <span class="n">ask</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">],</span> <span class="n">side</span><span class="p">,</span> <span class="n">time</span><span class="p">))</span>
+                            <span class="k">return</span> <span class="n">trades</span><span class="p">,</span> <span class="kc">None</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">price_level</span><span class="o">.</span><span class="n">delete_first</span><span class="p">(</span><span class="n">level_entry</span><span class="p">)</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">orders</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">])</span>
+                            <span class="k">if</span> <span class="n">price_level</span><span class="o">.</span><span class="n">is_empty</span><span class="p">():</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">remove_level</span><span class="p">(</span><span class="n">SELL</span><span class="p">,</span> <span class="n">ask</span><span class="p">)</span>
+                            <span class="n">size</span> <span class="o">-=</span> <span class="n">level_entry_size</span>
+                            <span class="c1"># Trade : (trader_id, counter_part_id, price, size, order_id)</span>
+                            <span class="n">trades</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">trader_id</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_TRADER_ID</span><span class="p">],</span> <span class="n">ask</span><span class="p">,</span> <span class="n">level_entry_size</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">],</span> <span class="n">side</span><span class="p">,</span> <span class="n">time</span><span class="p">))</span>
+                            <span class="k">if</span> <span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                                <span class="k">return</span> <span class="n">trades</span><span class="p">,</span> <span class="kc">None</span>
+
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">exist_sell_orders</span><span class="p">():</span>
+                        <span class="n">ask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_ask</span><span class="p">()</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">break</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">order_id</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="c1"># Limit Order: [side, price, size, trader_id, order_id]</span>
+            <span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">add_order</span><span class="p">(</span><span class="n">side</span><span class="p">,</span> <span class="n">price</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">trader_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">order_id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">order</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">orders</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">order_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">order</span>
+                <span class="c1"># Order in Book : (order_id, size, side, price)</span>
+                <span class="n">order_in_book</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">order_id</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">side</span><span class="p">,</span> <span class="n">price</span><span class="p">)</span>
+
+                <span class="k">return</span> <span class="n">trades</span><span class="p">,</span> <span class="n">order_in_book</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">trades</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">exist_buy_orders</span><span class="p">():</span>
+                <span class="n">bid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_bid</span><span class="p">()</span>
+                <span class="k">while</span> <span class="n">price</span> <span class="o">&lt;=</span> <span class="n">bid</span><span class="p">:</span>
+                    <span class="n">price_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_level</span><span class="p">(</span><span class="n">BUY</span><span class="p">,</span> <span class="n">bid</span><span class="p">)</span>
+                    <span class="k">while</span> <span class="n">price_level</span><span class="o">.</span><span class="n">is_not_empty</span><span class="p">():</span>
+                        <span class="n">level_entry</span> <span class="o">=</span> <span class="n">price_level</span><span class="o">.</span><span class="n">get_first</span><span class="p">()</span>
+                        <span class="n">level_entry_size</span> <span class="o">=</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_SIZE</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="n">level_entry_size</span><span class="p">:</span>
+                            <span class="n">price_level</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">level_entry</span><span class="p">,</span> <span class="o">-</span><span class="n">size</span><span class="p">)</span>
+                            <span class="c1"># Trade : (trader_id, counter_part_id, price, size, order_id)</span>
+                            <span class="n">trades</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">trader_id</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_TRADER_ID</span><span class="p">],</span> <span class="n">bid</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">],</span> <span class="n">side</span><span class="p">,</span> <span class="n">time</span><span class="p">))</span>
+                            <span class="k">return</span> <span class="n">trades</span><span class="p">,</span> <span class="kc">None</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">price_level</span><span class="o">.</span><span class="n">delete_first</span><span class="p">(</span><span class="n">level_entry</span><span class="p">)</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">orders</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">])</span>
+                            <span class="k">if</span> <span class="n">price_level</span><span class="o">.</span><span class="n">is_empty</span><span class="p">():</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">remove_level</span><span class="p">(</span><span class="n">BUY</span><span class="p">,</span> <span class="n">bid</span><span class="p">)</span>
+                            <span class="n">size</span> <span class="o">-=</span> <span class="n">level_entry_size</span>
+                            <span class="c1"># Trade : (trader_id, counter_part_id, price, size, order_id)</span>
+                            <span class="n">trades</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">trader_id</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_TRADER_ID</span><span class="p">],</span> <span class="n">bid</span><span class="p">,</span> <span class="n">level_entry_size</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">],</span> <span class="n">side</span><span class="p">,</span> <span class="n">time</span><span class="p">))</span>
+                            <span class="k">if</span> <span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                                <span class="k">return</span> <span class="n">trades</span><span class="p">,</span> <span class="kc">None</span>
+
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">exist_buy_orders</span><span class="p">():</span>
+                        <span class="n">bid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_bid</span><span class="p">()</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">break</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">order_id</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="c1"># Limit Order: [side, price, size, trader_id, order_id]</span>
+            <span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">add_order</span><span class="p">(</span><span class="n">side</span><span class="p">,</span> <span class="n">price</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">trader_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">order_id</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">order</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">orders</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">order_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">order</span>
+                <span class="c1"># Order in Book : (order_id, size, side, price)</span>
+                <span class="n">order_in_book</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">order_id</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">side</span><span class="p">,</span> <span class="n">price</span><span class="p">)</span>
+
+                <span class="k">return</span> <span class="n">trades</span><span class="p">,</span> <span class="n">order_in_book</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">trades</span><span class="p">,</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PyOrderBook.cancel"><a class="viewcode-back" href="../../source/order_book.html#order_book.order_books.PyOrderBook.cancel">[docs]</a>    <span class="k">def</span> <span class="nf">cancel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">order_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">order_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">orders</span><span class="p">:</span>
+            <span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">orders</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">order_id</span><span class="p">)</span>
+            <span class="n">level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_level</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="n">O_SIDE</span><span class="p">],</span> <span class="n">order</span><span class="p">[</span><span class="n">O_PRICE</span><span class="p">])</span>
+            <span class="n">level</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">order</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">level</span><span class="o">.</span><span class="n">is_empty</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">remove_level</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="n">O_SIDE</span><span class="p">],</span> <span class="n">order</span><span class="p">[</span><span class="n">O_PRICE</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="PyOrderBook.update"><a class="viewcode-back" href="../../source/order_book.html#order_book.order_books.PyOrderBook.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">order_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">order_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">orders</span><span class="p">:</span>
+            <span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">orders</span><span class="p">[</span><span class="n">order_id</span><span class="p">]</span>
+            <span class="n">price_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_level</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="n">O_SIDE</span><span class="p">],</span> <span class="n">order</span><span class="p">[</span><span class="n">O_PRICE</span><span class="p">])</span>
+            <span class="n">price_level</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">order</span><span class="p">,</span> <span class="n">size</span> <span class="o">-</span> <span class="n">order</span><span class="p">[</span><span class="n">O_SIZE</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="PyOrderBook.market_order"><a class="viewcode-back" href="../../source/order_book.html#order_book.order_books.PyOrderBook.market_order">[docs]</a>    <span class="k">def</span> <span class="nf">market_order</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">side</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">trader_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="n">trades</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">side</span> <span class="o">==</span> <span class="n">BUY</span><span class="p">:</span>
+            <span class="k">while</span> <span class="p">(</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">exist_sell_orders</span><span class="p">():</span>
+                <span class="n">ask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_ask</span><span class="p">()</span>
+                <span class="n">price_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_level</span><span class="p">(</span><span class="n">SELL</span><span class="p">,</span> <span class="n">ask</span><span class="p">)</span>
+                <span class="k">while</span> <span class="n">price_level</span><span class="o">.</span><span class="n">is_not_empty</span><span class="p">():</span>
+                    <span class="n">level_entry</span> <span class="o">=</span> <span class="n">price_level</span><span class="o">.</span><span class="n">get_first</span><span class="p">()</span>
+                    <span class="n">level_entry_size</span> <span class="o">=</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_SIZE</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="n">level_entry_size</span><span class="p">:</span>
+                        <span class="n">price_level</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">level_entry</span><span class="p">,</span> <span class="o">-</span><span class="n">size</span><span class="p">)</span>
+                        <span class="c1"># Trade : (trader_id, counter_part_id, price, size, order_id)</span>
+                        <span class="n">trades</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">trader_id</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_TRADER_ID</span><span class="p">],</span> <span class="n">ask</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">],</span> <span class="n">side</span><span class="p">,</span> <span class="n">time</span><span class="p">))</span>
+                        <span class="k">return</span> <span class="n">trades</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">price_level</span><span class="o">.</span><span class="n">delete_first</span><span class="p">(</span><span class="n">level_entry</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">orders</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">])</span>
+                        <span class="n">size</span> <span class="o">-=</span> <span class="n">level_entry_size</span>
+                        <span class="c1"># Trade : (trader_id, counter_part_id, price, size, order_id)</span>
+                        <span class="n">trades</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">trader_id</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_TRADER_ID</span><span class="p">],</span> <span class="n">ask</span><span class="p">,</span> <span class="n">level_entry_size</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">],</span> <span class="n">side</span><span class="p">,</span> <span class="n">time</span><span class="p">))</span>
+                        <span class="k">if</span> <span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="k">return</span> <span class="n">trades</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">remove_level</span><span class="p">(</span><span class="n">SELL</span><span class="p">,</span> <span class="n">ask</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">while</span> <span class="p">(</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">exist_buy_orders</span><span class="p">():</span>
+                <span class="n">bid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_bid</span><span class="p">()</span>
+                <span class="n">price_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_level</span><span class="p">(</span><span class="n">BUY</span><span class="p">,</span> <span class="n">bid</span><span class="p">)</span>
+                <span class="k">while</span> <span class="n">price_level</span><span class="o">.</span><span class="n">is_not_empty</span><span class="p">():</span>
+                    <span class="n">level_entry</span> <span class="o">=</span> <span class="n">price_level</span><span class="o">.</span><span class="n">get_first</span><span class="p">()</span>
+                    <span class="n">level_entry_size</span> <span class="o">=</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_SIZE</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="n">level_entry_size</span><span class="p">:</span>
+                        <span class="n">price_level</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">level_entry</span><span class="p">,</span> <span class="o">-</span><span class="n">size</span><span class="p">)</span>
+                        <span class="c1"># Trade : (trader_id, counter_part_id, price, size, order_id)</span>
+                        <span class="n">trades</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">trader_id</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_TRADER_ID</span><span class="p">],</span> <span class="n">bid</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">],</span> <span class="n">side</span><span class="p">,</span> <span class="n">time</span><span class="p">))</span>
+                        <span class="k">return</span> <span class="n">trades</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">price_level</span><span class="o">.</span><span class="n">delete_first</span><span class="p">(</span><span class="n">level_entry</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">orders</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">])</span>
+                        <span class="n">size</span> <span class="o">-=</span> <span class="n">level_entry_size</span>
+                        <span class="c1"># Trade : (trader_id, counter_part_id, price, size, order_id)</span>
+                        <span class="n">trades</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">trader_id</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_TRADER_ID</span><span class="p">],</span> <span class="n">bid</span><span class="p">,</span> <span class="n">level_entry_size</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">],</span> <span class="n">side</span><span class="p">,</span> <span class="n">time</span><span class="p">))</span>
+                        <span class="k">if</span> <span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="k">return</span> <span class="n">trades</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">remove_level</span><span class="p">(</span><span class="n">BUY</span><span class="p">,</span> <span class="n">bid</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">trades</span></div>
+
+<div class="viewcode-block" id="PyOrderBook.market_order_funds"><a class="viewcode-back" href="../../source/order_book.html#order_book.order_books.PyOrderBook.market_order_funds">[docs]</a>    <span class="k">def</span> <span class="nf">market_order_funds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">funds</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">side</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">trader_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="n">trades</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">side</span> <span class="o">==</span> <span class="n">BUY</span><span class="p">:</span>
+            <span class="k">while</span> <span class="p">(</span><span class="n">funds</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">exist_sell_orders</span><span class="p">():</span>
+                <span class="n">ask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_ask</span><span class="p">()</span>
+                <span class="n">size</span> <span class="o">=</span> <span class="n">funds</span> <span class="o">/</span> <span class="n">ask</span>
+                <span class="n">price_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_level</span><span class="p">(</span><span class="n">SELL</span><span class="p">,</span> <span class="n">ask</span><span class="p">)</span>
+                <span class="k">while</span> <span class="n">price_level</span><span class="o">.</span><span class="n">is_not_empty</span><span class="p">():</span>
+                    <span class="n">level_entry</span> <span class="o">=</span> <span class="n">price_level</span><span class="o">.</span><span class="n">get_first</span><span class="p">()</span>
+                    <span class="n">level_entry_size</span> <span class="o">=</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_SIZE</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="n">level_entry_size</span><span class="p">:</span>
+                        <span class="n">price_level</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">level_entry</span><span class="p">,</span> <span class="o">-</span><span class="n">size</span><span class="p">)</span>
+                        <span class="c1"># Trade : (trader_id, counter_part_id, price, size, order_id)</span>
+                        <span class="n">trades</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">trader_id</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_TRADER_ID</span><span class="p">],</span> <span class="n">ask</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">],</span> <span class="n">side</span><span class="p">,</span> <span class="n">time</span><span class="p">))</span>
+                        <span class="k">return</span> <span class="n">trades</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">price_level</span><span class="o">.</span><span class="n">delete_first</span><span class="p">(</span><span class="n">level_entry</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">orders</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">])</span>
+                        <span class="n">size</span> <span class="o">-=</span> <span class="n">level_entry_size</span>
+                        <span class="c1"># Trade : (trader_id, counter_part_id, price, size, order_id)</span>
+                        <span class="n">trades</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">trader_id</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_TRADER_ID</span><span class="p">],</span> <span class="n">ask</span><span class="p">,</span> <span class="n">level_entry_size</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">],</span> <span class="n">side</span><span class="p">,</span> <span class="n">time</span><span class="p">))</span>
+                        <span class="k">if</span> <span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="k">return</span> <span class="n">trades</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">funds</span> <span class="o">-=</span> <span class="n">level_entry_size</span> <span class="o">*</span> <span class="n">ask</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">remove_level</span><span class="p">(</span><span class="n">SELL</span><span class="p">,</span> <span class="n">ask</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">while</span> <span class="p">(</span><span class="n">funds</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">exist_buy_orders</span><span class="p">():</span>
+                <span class="n">bid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_bid</span><span class="p">()</span>
+                <span class="n">size</span> <span class="o">=</span> <span class="n">funds</span> <span class="o">/</span> <span class="n">bid</span>
+                <span class="n">price_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_level</span><span class="p">(</span><span class="n">BUY</span><span class="p">,</span> <span class="n">bid</span><span class="p">)</span>
+                <span class="k">while</span> <span class="n">price_level</span><span class="o">.</span><span class="n">is_not_empty</span><span class="p">():</span>
+                    <span class="n">level_entry</span> <span class="o">=</span> <span class="n">price_level</span><span class="o">.</span><span class="n">get_first</span><span class="p">()</span>
+                    <span class="n">level_entry_size</span> <span class="o">=</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_SIZE</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="n">level_entry_size</span><span class="p">:</span>
+                        <span class="n">price_level</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">level_entry</span><span class="p">,</span> <span class="o">-</span><span class="n">size</span><span class="p">)</span>
+                        <span class="c1"># Trade : (trader_id, counter_part_id, price, size, order_id)</span>
+                        <span class="n">trades</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">trader_id</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_TRADER_ID</span><span class="p">],</span> <span class="n">bid</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">],</span> <span class="n">side</span><span class="p">,</span> <span class="n">time</span><span class="p">))</span>
+                        <span class="k">return</span> <span class="n">trades</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">price_level</span><span class="o">.</span><span class="n">delete_first</span><span class="p">(</span><span class="n">level_entry</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">orders</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">])</span>
+                        <span class="n">size</span> <span class="o">-=</span> <span class="n">level_entry_size</span>
+                        <span class="c1"># Trade : (trader_id, counter_part_id, price, size, order_id)</span>
+                        <span class="n">trades</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">trader_id</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_TRADER_ID</span><span class="p">],</span> <span class="n">bid</span><span class="p">,</span> <span class="n">level_entry_size</span><span class="p">,</span> <span class="n">level_entry</span><span class="p">[</span><span class="n">O_ID</span><span class="p">],</span> <span class="n">side</span><span class="p">,</span> <span class="n">time</span><span class="p">))</span>
+                        <span class="k">if</span> <span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="k">return</span> <span class="n">trades</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">funds</span> <span class="o">-=</span> <span class="n">level_entry_size</span> <span class="o">*</span> <span class="n">bid</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">remove_level</span><span class="p">(</span><span class="n">BUY</span><span class="p">,</span> <span class="n">bid</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">trades</span></div></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Olle Dahlen.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.1',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

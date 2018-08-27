@@ -1,0 +1,675 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>rl.dist_envs &mdash; OrderBookRL 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> OrderBookRL
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">OrderBookRL</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>rl.dist_envs</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for rl.dist_envs</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">gym</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">order_book.constants</span> <span class="k">import</span> <span class="n">T_SIZE</span><span class="p">,</span> <span class="n">T_PRICE</span><span class="p">,</span> <span class="n">SELL</span><span class="p">,</span> <span class="n">OIB_SIDE</span><span class="p">,</span> <span class="n">OIB_PRICE</span><span class="p">,</span> <span class="n">OIB_SIZE</span><span class="p">,</span> <span class="n">OIB_ID</span><span class="p">,</span> <span class="n">Q_ASK</span><span class="p">,</span> <span class="n">Q_BID</span><span class="p">,</span> <span class="n">BUY</span><span class="p">,</span> \
+    <span class="n">O_SIZE</span><span class="p">,</span> <span class="n">O_ID</span><span class="p">,</span> <span class="n">T_ID</span><span class="p">,</span> <span class="n">TC_ID</span><span class="p">,</span> <span class="n">T_SIDE</span><span class="p">,</span> <span class="n">T_TIME</span><span class="p">,</span> <span class="n">T_OID</span><span class="p">,</span> <span class="n">O_PRICE</span>
+<span class="kn">from</span> <span class="nn">order_book.order_books</span> <span class="k">import</span> <span class="n">get_price_levels</span>
+<span class="kn">from</span> <span class="nn">order_book.price_level</span> <span class="k">import</span> <span class="n">SortedTradesLevel</span>
+<span class="kn">from</span> <span class="nn">order_book.order_types</span> <span class="k">import</span> <span class="n">limit_message</span><span class="p">,</span> <span class="n">cancel_message</span><span class="p">,</span> <span class="n">change_message</span>
+<span class="kn">from</span> <span class="nn">rl.abstract_envs</span> <span class="k">import</span> <span class="n">ExternalMarketEnv</span><span class="p">,</span> <span class="n">OrderTrackingEnv</span>
+<span class="kn">from</span> <span class="nn">rl.app</span> <span class="k">import</span> <span class="n">get_dist_app</span>
+<span class="kn">from</span> <span class="nn">rl.env_utils</span> <span class="k">import</span> <span class="n">get_pdf</span>
+<span class="kn">from</span> <span class="nn">rl.market_env</span> <span class="k">import</span> <span class="n">MarketEnv</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="k">import</span> <span class="n">deepcopy</span>
+
+
+<div class="viewcode-block" id="SpreadEnv"><a class="viewcode-back" href="../../source/rl.html#rl.dist_envs.SpreadEnv">[docs]</a><span class="k">class</span> <span class="nc">SpreadEnv</span><span class="p">(</span><span class="n">ExternalMarketEnv</span><span class="p">,</span> <span class="n">OrderTrackingEnv</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; An environment that puts a buy and a sell limit order on a certain tick distance from the bid and the ask.</span>
+
+<span class="sd">    It keeps track of its orders and updates them accordingly.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    min_order_capital : int</span>
+<span class="sd">        The minimum capital to put an order of</span>
+<span class="sd">    min_change_order_capital : int</span>
+<span class="sd">        The minimum capital to change update an order to</span>
+<span class="sd">    max_action : int</span>
+<span class="sd">        The maximum tick distance to ever use</span>
+<span class="sd">    default_action : np.array</span>
+<span class="sd">        The default action always to start from</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SpreadEnv.__init__"><a class="viewcode-back" href="../../source/rl.html#rl.dist_envs.SpreadEnv.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_type</span><span class="o">=</span><span class="s1">&#39;cyext&#39;</span><span class="p">,</span>
+                 <span class="n">market_setup</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">tick_size</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">ob_type</span><span class="o">=</span><span class="s1">&#39;cy_order_book&#39;</span><span class="p">,</span> <span class="n">order_level_type</span><span class="o">=</span><span class="s1">&#39;cydeque&#39;</span><span class="p">,</span>
+                                   <span class="n">order_levels_type</span><span class="o">=</span><span class="s1">&#39;cylist&#39;</span><span class="p">),</span> <span class="n">initial_funds</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
+                 <span class="n">order_paths</span><span class="o">=</span><span class="s1">&#39;../data/feather/&#39;</span><span class="p">,</span> <span class="n">snapshot_paths</span><span class="o">=</span><span class="s1">&#39;../data/snap_json/&#39;</span><span class="p">,</span> <span class="n">T_ID</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SpreadEnv</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">market_type</span><span class="p">,</span> <span class="n">market_setup</span><span class="p">,</span> <span class="n">initial_funds</span><span class="p">,</span> <span class="n">order_paths</span><span class="p">,</span> <span class="n">snapshot_paths</span><span class="p">,</span> <span class="n">T_ID</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trades</span> <span class="o">=</span> <span class="n">SortedTradesLevel</span><span class="p">(),</span> <span class="n">SortedTradesLevel</span><span class="p">()</span>
+
+        <span class="n">mul</span> <span class="o">=</span> <span class="mi">10</span><span class="o">**</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">market_setup</span><span class="p">[</span><span class="s1">&#39;tick_size&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_order_capital</span> <span class="o">=</span> <span class="p">(</span><span class="n">initial_funds</span><span class="o">/</span><span class="mi">100</span><span class="p">)</span><span class="o">*</span><span class="n">mul</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_change_order_capital</span> <span class="o">=</span> <span class="p">(</span><span class="n">initial_funds</span><span class="o">/</span><span class="mi">100</span><span class="p">)</span><span class="o">*</span><span class="n">mul</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_action</span> <span class="o">=</span> <span class="mi">50</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">default_action</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="SpreadEnv.match"><a class="viewcode-back" href="../../source/rl.html#rl.dist_envs.SpreadEnv.match">[docs]</a>    <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">side</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">price</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Matches previous trades with new trades.</span>
+
+<span class="sd">        The best buy orders (lowest price) are matched with the best sell orders (highest price). No match occurs if</span>
+<span class="sd">        no trades of the other side (BUY/SELL) has occurred.</span>
+
+<span class="sd">        The returned volume weighted spread vws is calculated as:</span>
+<span class="sd">        :math:`vws=(sell_{price} - buy_{price})*size`</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        side : int</span>
+<span class="sd">        size : float</span>
+<span class="sd">        price : int</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        volume_weighted_spread : float</span>
+<span class="sd">        size : float</span>
+<span class="sd">            The remaining size of the trade that as occured.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">volume_weighted_spread</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">trades</span><span class="p">[</span><span class="n">side</span><span class="p">]</span><span class="o">.</span><span class="n">is_not_empty</span><span class="p">()</span> <span class="ow">and</span> <span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">opposite_trade</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trades</span><span class="p">[</span><span class="n">side</span><span class="p">]</span><span class="o">.</span><span class="n">get_first</span><span class="p">()</span>
+            <span class="n">opposite_size</span> <span class="o">=</span> <span class="n">opposite_trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="n">opposite_size</span><span class="p">:</span>
+                <span class="n">volume_weighted_spread</span> <span class="o">+=</span> <span class="p">(</span><span class="n">price</span> <span class="o">-</span> <span class="n">opposite_trade</span><span class="p">[</span><span class="n">T_PRICE</span><span class="p">])</span><span class="o">*</span><span class="n">size</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trades</span><span class="p">[</span><span class="n">side</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">opposite_trade</span><span class="p">,</span> <span class="o">-</span><span class="n">size</span><span class="p">)</span>
+                <span class="n">size</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">break</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># size &gt;= opposite_trade[T_SIZE]</span>
+                <span class="n">volume_weighted_spread</span> <span class="o">+=</span> <span class="p">(</span><span class="n">price</span> <span class="o">-</span> <span class="n">opposite_trade</span><span class="p">[</span><span class="n">T_PRICE</span><span class="p">])</span> <span class="o">*</span> <span class="n">opposite_size</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trades</span><span class="p">[</span><span class="n">side</span><span class="p">]</span><span class="o">.</span><span class="n">delete_first</span><span class="p">(</span><span class="n">opposite_trade</span><span class="p">)</span>
+                <span class="n">size</span> <span class="o">-=</span> <span class="n">opposite_size</span>
+
+        <span class="k">if</span> <span class="n">side</span> <span class="o">==</span> <span class="n">SELL</span><span class="p">:</span>  <span class="c1"># Negate volume weighted spread if sold</span>
+            <span class="k">return</span> <span class="o">-</span><span class="n">volume_weighted_spread</span><span class="p">,</span> <span class="n">size</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">volume_weighted_spread</span><span class="p">,</span> <span class="n">size</span></div>
+
+<div class="viewcode-block" id="SpreadEnv.send_messages"><a class="viewcode-back" href="../../source/rl.html#rl.dist_envs.SpreadEnv.send_messages">[docs]</a>    <span class="k">def</span> <span class="nf">send_messages</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+        <span class="n">trades</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">mess</span> <span class="ow">in</span> <span class="n">messages</span><span class="p">:</span>
+            <span class="n">trades_</span><span class="p">,</span> <span class="n">oib</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">send_message</span><span class="p">(</span><span class="n">mess</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">oib</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">order_in_book</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">orders_in_book</span><span class="o">.</span><span class="n">add_order</span><span class="p">(</span><span class="n">oib</span><span class="p">[</span><span class="n">OIB_SIDE</span><span class="p">],</span> <span class="n">oib</span><span class="p">[</span><span class="n">OIB_PRICE</span><span class="p">],</span> <span class="n">oib</span><span class="p">[</span><span class="n">OIB_SIZE</span><span class="p">],</span>
+                                                              <span class="bp">self</span><span class="o">.</span><span class="n">T_ID</span><span class="p">,</span> <span class="n">oib</span><span class="p">[</span><span class="n">OIB_ID</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">orders_in_book_dict</span><span class="p">[</span><span class="n">oib</span><span class="p">[</span><span class="n">OIB_ID</span><span class="p">]]</span> <span class="o">=</span> <span class="n">order_in_book</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">trades_</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">trades</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">trades_</span><span class="p">)</span>
+
+        <span class="n">trades_</span><span class="p">,</span> <span class="n">done</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_until_next_quote_update</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">trades_</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">trades</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">trades_</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">trades</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">info</span></div>
+
+<div class="viewcode-block" id="SpreadEnv.get_messages"><a class="viewcode-back" href="../../source/rl.html#rl.dist_envs.SpreadEnv.get_messages">[docs]</a>    <span class="k">def</span> <span class="nf">get_messages</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="n">action</span> <span class="o">=</span> <span class="p">(</span><span class="n">action</span><span class="o">*</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">action</span> <span class="o">=</span> <span class="n">action</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_action</span>
+        <span class="n">action</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">a_min</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">a_max</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_action</span><span class="p">)</span>
+        <span class="n">buy_dist</span><span class="p">,</span> <span class="n">sell_dist</span> <span class="o">=</span> <span class="n">action</span>
+
+        <span class="n">ask</span><span class="p">,</span> <span class="n">bid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span><span class="p">[</span><span class="n">Q_ASK</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span><span class="p">[</span><span class="n">Q_BID</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">ask</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">prev_ask</span><span class="p">:</span>
+            <span class="n">rel_bid_price</span> <span class="o">=</span> <span class="n">ask</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rel_bid_price</span> <span class="o">=</span> <span class="n">bid</span>
+
+        <span class="k">if</span> <span class="n">bid</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">prev_bid</span><span class="p">:</span>
+            <span class="n">rel_ask_price</span> <span class="o">=</span> <span class="n">bid</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rel_ask_price</span> <span class="o">=</span> <span class="n">ask</span>
+
+        <span class="n">rel_ask_price</span> <span class="o">+=</span> <span class="n">sell_dist</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">prev_ask</span> <span class="o">=</span> <span class="n">ask</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prev_bid</span> <span class="o">=</span> <span class="n">bid</span>
+
+        <span class="n">buy_prices</span> <span class="o">=</span> <span class="p">[</span><span class="n">rel_bid_price</span> <span class="o">-</span> <span class="n">buy_dist</span><span class="p">]</span>
+        <span class="n">buy_sizes</span> <span class="o">=</span> <span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">funds</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">multiplier</span><span class="p">)</span> <span class="o">/</span> <span class="n">buy_prices</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+        <span class="n">sell_prices</span> <span class="o">=</span> <span class="p">[</span><span class="n">rel_ask_price</span> <span class="o">+</span> <span class="n">sell_dist</span><span class="p">]</span>
+        <span class="n">sell_sizes</span> <span class="o">=</span> <span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">funds</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">multiplier</span><span class="p">)</span> <span class="o">/</span> <span class="n">sell_prices</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_state</span> <span class="o">=</span> <span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">buy_prices</span><span class="p">,</span> <span class="n">buy_sizes</span><span class="p">,</span> <span class="n">sell_prices</span><span class="p">,</span> <span class="n">sell_sizes</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">adjust_orders</span><span class="p">(</span><span class="n">buy_sizes</span><span class="p">,</span> <span class="n">buy_prices</span><span class="p">,</span> <span class="n">sell_sizes</span><span class="p">,</span> <span class="n">sell_prices</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SpreadEnv.adjust_orders"><a class="viewcode-back" href="../../source/rl.html#rl.dist_envs.SpreadEnv.adjust_orders">[docs]</a>    <span class="k">def</span> <span class="nf">adjust_orders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">buy_sizes</span><span class="p">,</span> <span class="n">buy_prices</span><span class="p">,</span> <span class="n">sell_sizes</span><span class="p">,</span> <span class="n">sell_prices</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Creates messages so that the orders in book are updated accordingly to the prices and sizes wanted.</span>
+
+<span class="sd">        Creates limit orders, updates and cancellations based on the current order in books and the reuested prices and sizes.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        buy_sizes : np.array</span>
+<span class="sd">            Wanted buy prizes</span>
+<span class="sd">        buy_prices : np.array</span>
+<span class="sd">            Wanted buy sizes</span>
+<span class="sd">        sell_sizes : np.array</span>
+<span class="sd">            Wanted sell prizes</span>
+<span class="sd">        sell_prices : np.array</span>
+<span class="sd">            Wanted sell sizes</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        messages : list</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">messages</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">buy_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">buy_prices</span><span class="p">,</span> <span class="n">buy_sizes</span><span class="p">))</span>
+        <span class="n">oib_buy_prices</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">orders_in_book</span><span class="o">.</span><span class="n">get_prices</span><span class="p">(</span><span class="n">BUY</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">oib_buy_prices</span><span class="p">:</span>
+            <span class="n">price_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">orders_in_book</span><span class="o">.</span><span class="n">get_level</span><span class="p">(</span><span class="n">BUY</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">buy_dict</span><span class="p">:</span>
+                <span class="n">size</span> <span class="o">=</span> <span class="n">price_level</span><span class="o">.</span><span class="n">size</span>
+                <span class="n">size_diff</span> <span class="o">=</span> <span class="n">buy_dict</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">-</span> <span class="n">size</span>
+
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p</span><span class="o">*</span><span class="n">size_diff</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_change_order_capital</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">size_diff</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">limit_message</span><span class="p">(</span><span class="n">BUY</span><span class="p">,</span> <span class="n">size_diff</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_ID</span><span class="p">))</span>
+                    <span class="k">elif</span> <span class="n">size_diff</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">size_diff</span> <span class="o">=</span> <span class="o">-</span><span class="n">size_diff</span>
+
+                        <span class="k">while</span> <span class="n">price_level</span><span class="o">.</span><span class="n">is_not_empty</span><span class="p">():</span>
+                            <span class="n">order</span> <span class="o">=</span> <span class="n">price_level</span><span class="o">.</span><span class="n">get_last</span><span class="p">()</span>
+                            <span class="n">order_size</span> <span class="o">=</span> <span class="n">order</span><span class="p">[</span><span class="n">O_SIZE</span><span class="p">]</span>
+                            <span class="n">change_diff</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">size_diff</span><span class="p">,</span> <span class="n">order_size</span><span class="p">)</span>
+                            <span class="c1"># A order lies to small to compensate for the quantity diff, should then be removed:</span>
+                            <span class="k">if</span> <span class="n">change_diff</span> <span class="o">==</span> <span class="n">order_size</span><span class="p">:</span>
+                                <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cancel_message</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="n">O_ID</span><span class="p">]))</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">delete_order_from_level</span><span class="p">(</span><span class="n">BUY</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">price_level</span><span class="p">)</span>
+                                <span class="n">size_diff</span> <span class="o">-=</span> <span class="n">order_size</span>
+                                <span class="k">if</span> <span class="n">size_diff</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                                    <span class="k">break</span>
+                            <span class="c1"># A order is large enough to be reduced in quantity</span>
+                            <span class="k">else</span><span class="p">:</span>
+                                <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">change_message</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="n">O_ID</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="n">order_size</span> <span class="o">-</span> <span class="n">change_diff</span><span class="p">))</span>
+                                <span class="n">price_level</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">order</span><span class="p">,</span> <span class="o">-</span><span class="n">change_diff</span><span class="p">)</span>
+                                <span class="k">break</span>
+                <span class="n">buy_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Removes all orders on price level not active anymore</span>
+                <span class="k">for</span> <span class="n">order</span> <span class="ow">in</span> <span class="n">price_level</span><span class="o">.</span><span class="n">orders</span><span class="p">:</span>
+                    <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cancel_message</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="n">O_ID</span><span class="p">]))</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">orders_in_book_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="n">O_ID</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">orders_in_book</span><span class="o">.</span><span class="n">remove_level</span><span class="p">(</span><span class="n">BUY</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">price</span><span class="p">,</span> <span class="n">size</span> <span class="ow">in</span> <span class="n">buy_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">price</span><span class="o">*</span><span class="n">size</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_order_capital</span><span class="p">:</span>
+                <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">limit_message</span><span class="p">(</span><span class="n">BUY</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">price</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_ID</span><span class="p">))</span>
+
+        <span class="n">sell_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">sell_prices</span><span class="p">,</span> <span class="n">sell_sizes</span><span class="p">))</span>
+        <span class="n">oib_sell_prices</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">orders_in_book</span><span class="o">.</span><span class="n">get_prices</span><span class="p">(</span><span class="n">SELL</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">oib_sell_prices</span><span class="p">:</span>
+            <span class="n">price_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">orders_in_book</span><span class="o">.</span><span class="n">get_level</span><span class="p">(</span><span class="n">SELL</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">sell_dict</span><span class="p">:</span>
+                <span class="n">size</span> <span class="o">=</span> <span class="n">price_level</span><span class="o">.</span><span class="n">size</span>
+                <span class="n">size_diff</span> <span class="o">=</span> <span class="n">sell_dict</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">-</span> <span class="n">size</span>
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p</span><span class="o">*</span><span class="n">size_diff</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_change_order_capital</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">size_diff</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">limit_message</span><span class="p">(</span><span class="n">SELL</span><span class="p">,</span> <span class="n">size_diff</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_ID</span><span class="p">))</span>
+                    <span class="k">elif</span> <span class="n">size_diff</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">size_diff</span> <span class="o">=</span> <span class="o">-</span><span class="n">size_diff</span>
+                        <span class="k">while</span> <span class="n">price_level</span><span class="o">.</span><span class="n">is_not_empty</span><span class="p">():</span>
+                            <span class="n">order</span> <span class="o">=</span> <span class="n">price_level</span><span class="o">.</span><span class="n">get_last</span><span class="p">()</span>
+                            <span class="n">order_size</span> <span class="o">=</span> <span class="n">order</span><span class="p">[</span><span class="n">O_SIZE</span><span class="p">]</span>
+                            <span class="n">change_diff</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">size_diff</span><span class="p">,</span> <span class="n">order_size</span><span class="p">)</span>
+                            <span class="c1"># A order lies to small to compensate for the quantity diff, should then be removed:</span>
+                            <span class="k">if</span> <span class="n">change_diff</span> <span class="o">==</span> <span class="n">order_size</span><span class="p">:</span>
+                                <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cancel_message</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="n">O_ID</span><span class="p">]))</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">delete_order_from_level</span><span class="p">(</span><span class="n">SELL</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">price_level</span><span class="p">)</span>
+                                <span class="n">size_diff</span> <span class="o">-=</span> <span class="n">order_size</span>
+                                <span class="k">if</span> <span class="n">size_diff</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                                    <span class="k">break</span>
+                            <span class="c1"># A order is large enough to be reduced in quantity</span>
+                            <span class="k">else</span><span class="p">:</span>
+                                <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">change_message</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="n">O_ID</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="n">order_size</span> <span class="o">-</span> <span class="n">change_diff</span><span class="p">))</span>
+                                <span class="n">price_level</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">order</span><span class="p">,</span> <span class="o">-</span><span class="n">change_diff</span><span class="p">)</span>
+                                <span class="k">break</span>
+                <span class="n">sell_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Removes all orders on price level not active anymore</span>
+                <span class="k">for</span> <span class="n">order</span> <span class="ow">in</span> <span class="n">price_level</span><span class="o">.</span><span class="n">orders</span><span class="p">:</span>
+                    <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cancel_message</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="n">O_ID</span><span class="p">]))</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">orders_in_book_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="n">O_ID</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">orders_in_book</span><span class="o">.</span><span class="n">remove_level</span><span class="p">(</span><span class="n">SELL</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">price</span><span class="p">,</span> <span class="n">size</span> <span class="ow">in</span> <span class="n">sell_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">price</span><span class="o">*</span><span class="n">size</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_order_capital</span><span class="p">:</span>
+                <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">limit_message</span><span class="p">(</span><span class="n">SELL</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">price</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_ID</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">messages</span></div>
+
+<div class="viewcode-block" id="SpreadEnv.get_private_variables"><a class="viewcode-back" href="../../source/rl.html#rl.dist_envs.SpreadEnv.get_private_variables">[docs]</a>    <span class="k">def</span> <span class="nf">get_private_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot; No private variables implemented yet.</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        private_variables : tuple</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">()</span></div>
+
+<div class="viewcode-block" id="SpreadEnv.get_reward"><a class="viewcode-back" href="../../source/rl.html#rl.dist_envs.SpreadEnv.get_reward">[docs]</a>    <span class="k">def</span> <span class="nf">get_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trades</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot; Calculates the reward based on the trades that has occured.</span>
+
+<span class="sd">        The reward is calculated based on previous trades and the current trades. If a buy trade has occurred, the</span>
+<span class="sd">        volume_weighted_spread :py:meth:`match` is calculated from previous sell trades. Vice versa for a sell trade.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">reward</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">trade</span> <span class="ow">in</span> <span class="n">trades</span><span class="p">:</span>
+            <span class="c1"># sent order matched and not against oneself</span>
+            <span class="k">if</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_ID</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_ID</span> <span class="ow">and</span> <span class="n">trade</span><span class="p">[</span><span class="n">TC_ID</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_ID</span><span class="p">:</span>
+                <span class="c1"># Sent buy order and got matched, gets spread from sell side</span>
+                <span class="k">if</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_SIDE</span><span class="p">]</span> <span class="o">==</span> <span class="n">BUY</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">trades_list</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">trade</span><span class="p">[</span><span class="n">T_TIME</span><span class="p">],</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">],</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_PRICE</span><span class="p">],</span> <span class="n">BUY</span><span class="p">])</span>
+                    <span class="c1"># Match against previous sell trades</span>
+                    <span class="n">r</span><span class="p">,</span> <span class="n">rem_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">SELL</span><span class="p">,</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">],</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_PRICE</span><span class="p">])</span>
+                    <span class="n">r</span> <span class="o">+=</span> <span class="n">reward</span>
+                    <span class="k">if</span> <span class="n">rem_size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">trade</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">trade</span><span class="p">)</span>
+                        <span class="n">trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">]</span> <span class="o">=</span> <span class="n">rem_size</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">trades</span><span class="p">[</span><span class="n">BUY</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trade</span><span class="p">)</span>
+                <span class="c1"># Sent sell order and got matched, gets spread from buy side</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">trades_list</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">trade</span><span class="p">[</span><span class="n">T_TIME</span><span class="p">],</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">],</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_PRICE</span><span class="p">],</span> <span class="n">SELL</span><span class="p">])</span>
+                    <span class="c1"># Match against previous buy trades</span>
+                    <span class="n">r</span><span class="p">,</span> <span class="n">rem_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">BUY</span><span class="p">,</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">],</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_PRICE</span><span class="p">])</span>
+                    <span class="n">reward</span> <span class="o">+=</span> <span class="n">r</span>
+                    <span class="k">if</span> <span class="n">rem_size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">trade</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">trade</span><span class="p">)</span>
+                        <span class="n">trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">]</span> <span class="o">=</span> <span class="n">rem_size</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">trades</span><span class="p">[</span><span class="n">SELL</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trade</span><span class="p">)</span>
+
+            <span class="c1"># someone matched on own order in book and not against oneself, TC = trade counterparty</span>
+            <span class="k">elif</span> <span class="n">trade</span><span class="p">[</span><span class="n">TC_ID</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_ID</span> <span class="ow">and</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_ID</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_ID</span><span class="p">:</span>
+                <span class="c1"># Someone bought on our sell order, we got a sell trade, matches against old buy trades</span>
+                <span class="k">if</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_SIDE</span><span class="p">]</span> <span class="o">==</span> <span class="n">BUY</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">trades_list</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">trade</span><span class="p">[</span><span class="n">T_TIME</span><span class="p">],</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">],</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_PRICE</span><span class="p">],</span> <span class="n">SELL</span><span class="p">])</span>
+                    <span class="c1"># Since someone bought on our sell order in the book, we need to remove the matched size from our</span>
+                    <span class="c1"># order tracking</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">update_order_tracking</span><span class="p">(</span><span class="n">SELL</span><span class="p">,</span> <span class="n">trade</span><span class="p">)</span>
+                    <span class="c1"># Match against previous sell trades</span>
+                    <span class="n">reward</span><span class="p">,</span> <span class="n">rem_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">BUY</span><span class="p">,</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">],</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_PRICE</span><span class="p">])</span>
+                    <span class="k">if</span> <span class="n">rem_size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">trade</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">trade</span><span class="p">)</span>
+                        <span class="n">trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">]</span> <span class="o">=</span> <span class="n">rem_size</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">trades</span><span class="p">[</span><span class="n">SELL</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trade</span><span class="p">)</span>
+
+                <span class="c1"># Someone sold to our buy trade, we got a buy trade, matches against old sell trades</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">trades_list</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">trade</span><span class="p">[</span><span class="n">T_TIME</span><span class="p">],</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">],</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_PRICE</span><span class="p">],</span> <span class="n">BUY</span><span class="p">])</span>
+                    <span class="c1"># Since someone sold on our buy order in the book, we need to remove the matched size from our</span>
+                    <span class="c1"># order tracking</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">update_order_tracking</span><span class="p">(</span><span class="n">BUY</span><span class="p">,</span> <span class="n">trade</span><span class="p">)</span>
+
+                    <span class="n">reward</span><span class="p">,</span> <span class="n">rem_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">SELL</span><span class="p">,</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">],</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_PRICE</span><span class="p">])</span>
+                    <span class="k">if</span> <span class="n">rem_size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">trade</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">trade</span><span class="p">)</span>
+                        <span class="n">trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">]</span> <span class="o">=</span> <span class="n">rem_size</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">trades</span><span class="p">[</span><span class="n">BUY</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trade</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">reward</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">multiplier</span></div>
+
+<div class="viewcode-block" id="SpreadEnv.render"><a class="viewcode-back" href="../../source/rl.html#rl.dist_envs.SpreadEnv.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;human&#39;</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">first_render</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span> <span class="o">=</span> <span class="n">get_dist_app</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;buyorders&#39;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;sellorders&#39;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="n">MarketEnv</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="n">render_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_state</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+        <span class="n">order_snap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">orders_in_book</span><span class="o">.</span><span class="n">get_snap</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="n">buyorders</span> <span class="o">=</span> <span class="n">order_snap</span><span class="p">[</span><span class="s1">&#39;bids&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="n">sellorders</span> <span class="o">=</span> <span class="n">order_snap</span><span class="p">[</span><span class="s1">&#39;asks&#39;</span><span class="p">]</span>
+
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.0001</span><span class="p">)</span>  <span class="c1"># TODO investigate why a halt is needed for the flask app in other thread</span></div>
+
+<div class="viewcode-block" id="SpreadEnv.seed"><a class="viewcode-back" href="../../source/rl.html#rl.dist_envs.SpreadEnv.seed">[docs]</a>    <span class="k">def</span> <span class="nf">seed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">observation_space</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">gym</span><span class="o">.</span><span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">action_space</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; The action space is :math:`buy_{distance}, sell_{distance} = action</span>
+
+<span class="sd">        The action are distances in ticks:</span>
+
+<span class="sd">        :math:`buy_{distance}, sell_{distance} = action[0], action[1]`</span>
+
+<span class="sd">        Sets the buy limit order with a distance from the bid:</span>
+
+<span class="sd">        :math:`buy_{price} = bid - buy_{distance}`</span>
+
+<span class="sd">        And the sell limit order with a distance from the ask:</span>
+
+<span class="sd">        :math:`sell_{price} = ask + sell_{distance}`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">gym</span><span class="o">.</span><span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SpreadEnv.reset"><a class="viewcode-back" href="../../source/rl.html#rl.dist_envs.SpreadEnv.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">obs</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">SpreadEnv</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">market</span><span class="p">)</span>
+        <span class="c1">#self.orders_in_book = get_price_levels(market_setup[&#39;order_levels_type&#39;], market_setup[&#39;order_level_type&#39;])</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_market_setup</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;order_levels_type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;fast_avl&#39;</span>
+        <span class="k">if</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;max_price&#39;</span><span class="p">):</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;max_price&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;max_price&#39;</span><span class="p">]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">multiplier</span><span class="p">)</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;min_price&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;min_price&#39;</span><span class="p">]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">multiplier</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orders_in_book</span> <span class="o">=</span> <span class="n">get_price_levels</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orders_in_book_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trades</span> <span class="o">=</span> <span class="n">SortedTradesLevel</span><span class="p">(),</span> <span class="n">SortedTradesLevel</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">prev_ask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span><span class="p">[</span><span class="n">Q_ASK</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prev_bid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span><span class="p">[</span><span class="n">Q_BID</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;buyorders&#39;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;sellorders&#39;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="k">return</span> <span class="n">obs</span></div></div>
+
+
+<div class="viewcode-block" id="DistEnv"><a class="viewcode-back" href="../../source/rl.html#rl.dist_envs.DistEnv">[docs]</a><span class="k">class</span> <span class="nc">DistEnv</span><span class="p">(</span><span class="n">SpreadEnv</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; A extension of the :py:class:`SpreadEnv` that has a full distribution of orders.</span>
+
+<span class="sd">    Has one distribution of buy orders from bid and a certain amount of tick sizes downwards.</span>
+<span class="sd">    Vice versa for the sell orders. One example distribution is to place the orders according to a</span>
+<span class="sd">    `beta distribution &lt;https://en.wikipedia.org/wiki/Beta_distribution/&gt;`_.</span>
+
+
+
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    n_tick_levels : int</span>
+<span class="sd">        The number of tick levels to put orders away from the anchor price, bid in buy case.</span>
+<span class="sd">    n_price_levels : int</span>
+<span class="sd">        The number of price levels to put orders in. Must be smaller than the number of tick levels.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="DistEnv.__init__"><a class="viewcode-back" href="../../source/rl.html#rl.dist_envs.DistEnv.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdf_type</span><span class="o">=</span><span class="s1">&#39;beta&#39;</span><span class="p">,</span> <span class="n">market_type</span><span class="o">=</span><span class="s1">&#39;cyext&#39;</span><span class="p">,</span>
+                 <span class="n">market_setup</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">tick_size</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">ob_type</span><span class="o">=</span><span class="s1">&#39;cy_order_book&#39;</span><span class="p">,</span> <span class="n">order_level_type</span><span class="o">=</span><span class="s1">&#39;cydeque&#39;</span><span class="p">,</span>
+                                   <span class="n">order_levels_type</span><span class="o">=</span><span class="s1">&#39;cylist&#39;</span><span class="p">),</span> <span class="n">initial_funds</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
+                 <span class="n">order_paths</span><span class="o">=</span><span class="s1">&#39;../data/feather/&#39;</span><span class="p">,</span> <span class="n">snapshot_paths</span><span class="o">=</span><span class="s1">&#39;../data/snap_json/&#39;</span><span class="p">,</span> <span class="n">T_ID</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">DistEnv</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">market_type</span><span class="p">,</span> <span class="n">market_setup</span><span class="p">,</span> <span class="n">initial_funds</span><span class="p">,</span>
+                                <span class="n">order_paths</span><span class="p">,</span> <span class="n">snapshot_paths</span><span class="p">,</span> <span class="n">T_ID</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_action</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_action</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dist_pdf</span> <span class="o">=</span> <span class="n">get_pdf</span><span class="p">(</span><span class="n">pdf_type</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_tick_levels</span> <span class="o">=</span> <span class="mi">40</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_price_levels</span> <span class="o">=</span> <span class="mi">10</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="mf">0.01</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_price_levels</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x_shift</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_tick_levels</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_tick_levels</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_price_levels</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="DistEnv.funds_dist"><a class="viewcode-back" href="../../source/rl.html#rl.dist_envs.DistEnv.funds_dist">[docs]</a>    <span class="k">def</span> <span class="nf">funds_dist</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="n">probs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dist_pdf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+        <span class="n">probs</span> <span class="o">/=</span> <span class="n">probs</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">funds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">funds</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">funds_dist</span> <span class="o">=</span> <span class="n">probs</span> <span class="o">*</span> <span class="n">funds</span>
+        <span class="k">return</span> <span class="n">funds_dist</span></div>
+
+<div class="viewcode-block" id="DistEnv.get_messages"><a class="viewcode-back" href="../../source/rl.html#rl.dist_envs.DistEnv.get_messages">[docs]</a>    <span class="k">def</span> <span class="nf">get_messages</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="n">action</span> <span class="o">=</span> <span class="n">action</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_action</span>
+        <span class="n">action</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">a_min</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">a_max</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_action</span><span class="p">)</span>
+        <span class="n">buy_alpha</span><span class="p">,</span> <span class="n">buy_beta</span><span class="p">,</span> <span class="n">sell_alpha</span><span class="p">,</span> <span class="n">sell_beta</span> <span class="o">=</span> <span class="n">action</span>
+        <span class="n">buy_funds_dist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">funds_dist</span><span class="p">(</span><span class="n">buy_alpha</span><span class="p">,</span> <span class="n">buy_beta</span><span class="p">)</span>
+        <span class="n">sell_funds_dist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">funds_dist</span><span class="p">(</span><span class="n">sell_alpha</span><span class="p">,</span> <span class="n">sell_beta</span><span class="p">)</span>
+
+        <span class="n">ask</span><span class="p">,</span> <span class="n">bid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span><span class="p">[</span><span class="n">Q_ASK</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span><span class="p">[</span><span class="n">Q_BID</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">ask</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">prev_ask</span><span class="p">:</span>
+            <span class="n">rel_bid_price</span> <span class="o">=</span> <span class="n">ask</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rel_bid_price</span> <span class="o">=</span> <span class="n">bid</span>
+
+        <span class="k">if</span> <span class="n">bid</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">prev_bid</span><span class="p">:</span>
+            <span class="n">rel_ask_price</span> <span class="o">=</span> <span class="n">bid</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rel_ask_price</span> <span class="o">=</span> <span class="n">ask</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">prev_ask</span> <span class="o">=</span> <span class="n">ask</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prev_bid</span> <span class="o">=</span> <span class="n">bid</span>
+
+        <span class="n">buy_prices</span> <span class="o">=</span> <span class="n">rel_bid_price</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_shift</span>
+        <span class="n">buy_sizes</span> <span class="o">=</span> <span class="n">buy_funds_dist</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">multiplier</span> <span class="o">/</span> <span class="n">buy_prices</span>
+        <span class="n">sell_prices</span> <span class="o">=</span> <span class="n">rel_ask_price</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_shift</span>
+        <span class="n">sell_sizes</span> <span class="o">=</span> <span class="n">sell_funds_dist</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">multiplier</span> <span class="o">/</span> <span class="n">sell_prices</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_state</span> <span class="o">=</span> <span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">buy_prices</span><span class="p">,</span> <span class="n">buy_sizes</span><span class="p">,</span> <span class="n">sell_prices</span><span class="p">,</span> <span class="n">sell_sizes</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">adjust_orders</span><span class="p">(</span><span class="n">buy_sizes</span><span class="p">,</span> <span class="n">buy_prices</span><span class="p">,</span> <span class="n">sell_sizes</span><span class="p">,</span> <span class="n">sell_prices</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">action_space</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; The action space is the buy and sell distributions beta and alpha</span>
+
+<span class="sd">        :math:`buy_\\alpha, buy_\\beta, sell_\\alpha, sell_\\beta = action`</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">gym</span><span class="o">.</span><span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mf">2.9</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span><span class="o">==</span><span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">DistEnv</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+        <span class="n">obs</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="n">done</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="n">done</span><span class="p">:</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
+            <span class="n">obs</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+            <span class="n">env</span><span class="o">.</span><span class="n">render</span><span class="p">()</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Olle Dahlen.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.1',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

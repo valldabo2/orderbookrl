@@ -1,0 +1,274 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>orderbookrl.tests package &mdash; OrderBookRL 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> OrderBookRL
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">orderbookrl.tests package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-orderbookrl.tests.test_adv">orderbookrl.tests.test_adv module</a></li>
+<li><a class="reference internal" href="#module-orderbookrl.tests">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">OrderBookRL</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>orderbookrl.tests package</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/source/orderbookrl.tests.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="orderbookrl-tests-package">
+<h1>orderbookrl.tests package<a class="headerlink" href="#orderbookrl-tests-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-orderbookrl.tests.test_adv">
+<span id="orderbookrl-tests-test-adv-module"></span><h2>orderbookrl.tests.test_adv module<a class="headerlink" href="#module-orderbookrl.tests.test_adv" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="orderbookrl.tests.test_adv.compute_advantages">
+<code class="descclassname">orderbookrl.tests.test_adv.</code><code class="descname">compute_advantages</code><span class="sig-paren">(</span><em>rollout</em>, <em>last_r</em>, <em>gamma=0.9</em>, <em>lambda_=1.0</em>, <em>use_gae=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/orderbookrl/tests/test_adv.html#compute_advantages"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orderbookrl.tests.test_adv.compute_advantages" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a rollout, compute its value targets and the advantage.</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd>rollout (SampleBatch): SampleBatch of a single trajectory
+last_r (float): Value estimation for last observation
+gamma (float): Discount factor.
+<a href="#id1"><span class="problematic" id="id2">lambda_</span></a> (float): Parameter for GAE
+use_gae (bool): Using Generalized Advantage Estamation</dd>
+<dt>Returns:</dt>
+<dd><dl class="first last docutils">
+<dt>SampleBatch (SampleBatch): Object with experience from rollout and</dt>
+<dd>processed rewards.</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="class">
+<dt id="orderbookrl.tests.test_adv.AdvPPOGraph">
+<em class="property">class </em><code class="descclassname">orderbookrl.tests.test_adv.</code><code class="descname">AdvPPOGraph</code><span class="sig-paren">(</span><em>observation_space</em>, <em>action_space</em>, <em>config</em>, <em>existing_inputs=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/orderbookrl/tests/test_adv.html#AdvPPOGraph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orderbookrl.tests.test_adv.AdvPPOGraph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ray.rllib.agents.ppo.ppo_policy_graph.PPOPolicyGraph</span></code></p>
+<dl class="method">
+<dt id="orderbookrl.tests.test_adv.AdvPPOGraph.postprocess_trajectory">
+<code class="descname">postprocess_trajectory</code><span class="sig-paren">(</span><em>sample_batch</em>, <em>other_agent_batches=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/orderbookrl/tests/test_adv.html#AdvPPOGraph.postprocess_trajectory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orderbookrl.tests.test_adv.AdvPPOGraph.postprocess_trajectory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implements algorithm-specific trajectory postprocessing.</p>
+<p>This will be called on each trajectory fragment computed during policy
+evaluation. Each fragment is guaranteed to be only from one episode.</p>
+<dl class="docutils">
+<dt>Arguments:</dt>
+<dd><dl class="first last docutils">
+<dt>sample_batch (SampleBatch): batch of experiences for the policy,</dt>
+<dd>which will contain at most one episode trajectory.</dd>
+<dt>other_agent_batches (dict): In a multi-agent env, this contains a</dt>
+<dd>mapping of agent ids to (policy_graph, agent_batch) tuples
+containing the policy graph and experiences of the other agent.</dd>
+</dl>
+</dd>
+<dt>Returns:</dt>
+<dd>SampleBatch: postprocessed sample batch.</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="orderbookrl.tests.test_adv.PPOAdv">
+<em class="property">class </em><code class="descclassname">orderbookrl.tests.test_adv.</code><code class="descname">PPOAdv</code><span class="sig-paren">(</span><em>config=None</em>, <em>env=None</em>, <em>logger_creator=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/orderbookrl/tests/test_adv.html#PPOAdv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orderbookrl.tests.test_adv.PPOAdv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ray.rllib.agents.ppo.ppo.PPOAgent</span></code></p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-orderbookrl.tests">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-orderbookrl.tests" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Olle Dahlen.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.1',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

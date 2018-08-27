@@ -1,0 +1,429 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>tests.test_externalMarket &mdash; OrderBookRL 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> OrderBookRL
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">OrderBookRL</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>tests.test_externalMarket</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for tests.test_externalMarket</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">unittest</span> <span class="k">import</span> <span class="n">TestCase</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">order_book.market</span> <span class="k">import</span> <span class="n">ExternalMarket</span>
+<span class="kn">from</span> <span class="nn">order_book.constants</span> <span class="k">import</span> <span class="n">BUY</span><span class="p">,</span> <span class="n">SELL</span><span class="p">,</span> <span class="n">EXT_ID</span><span class="p">,</span> <span class="n">SO_PRICE</span><span class="p">,</span> <span class="n">SO_SIZE</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">types</span> <span class="k">import</span> <span class="n">SimpleNamespace</span>
+<span class="kn">from</span> <span class="nn">order_book.utils</span> <span class="k">import</span> <span class="n">to_int</span>
+
+<span class="kn">from</span> <span class="nn">cy_order_book.order_book</span> <span class="k">import</span> <span class="n">CyExternalMarket</span>
+
+<span class="n">tick</span> <span class="o">=</span> <span class="mf">0.01</span>
+<span class="n">tick_dec</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">tick</span><span class="p">))</span>
+<span class="n">multiplier</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="n">tick_dec</span><span class="p">)</span>
+
+<div class="viewcode-block" id="load"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.load">[docs]</a><span class="k">def</span> <span class="nf">load</span><span class="p">():</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;testdata/messages.json&#39;</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">messages_json_file</span><span class="p">:</span>
+        <span class="n">messages</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">messages_json_file</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;testdata/beginning_level_3.json&#39;</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">begin_json_file</span><span class="p">:</span>
+        <span class="n">beginning_level_3</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">begin_json_file</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;testdata/ending_level_3.json&#39;</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">end_json_file</span><span class="p">:</span>
+        <span class="n">ending_level_3</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">end_json_file</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">beginning_level_3</span><span class="p">[</span><span class="s1">&#39;sequence&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">==</span> <span class="n">messages</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;sequence&#39;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="n">ending_level_3</span><span class="p">[</span><span class="s1">&#39;sequence&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">messages</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;sequence&#39;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Problem with sample data sequences&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">beginning_level_3</span><span class="p">,</span> <span class="n">ending_level_3</span><span class="p">,</span> <span class="n">messages</span></div>
+
+
+<div class="viewcode-block" id="agg_snap"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.agg_snap">[docs]</a><span class="k">def</span> <span class="nf">agg_snap</span><span class="p">(</span><span class="n">snap</span><span class="p">):</span>
+    <span class="n">agg</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;asks&#39;</span><span class="p">:</span> <span class="p">{},</span> <span class="s1">&#39;bids&#39;</span><span class="p">:</span> <span class="p">{}}</span>
+    <span class="c1"># Snapshot Order : [price, size, external_market_order_id]</span>
+    <span class="k">for</span> <span class="n">so_order</span> <span class="ow">in</span> <span class="n">snap</span><span class="p">[</span><span class="s1">&#39;bids&#39;</span><span class="p">]:</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">so_order</span><span class="p">[</span><span class="n">SO_PRICE</span><span class="p">]),</span> <span class="n">tick_dec</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">so_order</span><span class="p">[</span><span class="n">SO_SIZE</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">p</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">agg</span><span class="p">[</span><span class="s1">&#39;bids&#39;</span><span class="p">]:</span>
+            <span class="n">agg</span><span class="p">[</span><span class="s1">&#39;bids&#39;</span><span class="p">][</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">agg</span><span class="p">[</span><span class="s1">&#39;bids&#39;</span><span class="p">][</span><span class="n">p</span><span class="p">]</span> <span class="o">+=</span> <span class="n">s</span>
+
+    <span class="k">for</span> <span class="n">so_order</span> <span class="ow">in</span> <span class="n">snap</span><span class="p">[</span><span class="s1">&#39;asks&#39;</span><span class="p">]:</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">so_order</span><span class="p">[</span><span class="n">SO_PRICE</span><span class="p">]),</span> <span class="n">tick_dec</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">so_order</span><span class="p">[</span><span class="n">SO_SIZE</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">p</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">agg</span><span class="p">[</span><span class="s1">&#39;asks&#39;</span><span class="p">]:</span>
+            <span class="n">agg</span><span class="p">[</span><span class="s1">&#39;asks&#39;</span><span class="p">][</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">agg</span><span class="p">[</span><span class="s1">&#39;asks&#39;</span><span class="p">][</span><span class="n">p</span><span class="p">]</span> <span class="o">+=</span> <span class="n">s</span>
+
+    <span class="k">return</span> <span class="n">agg</span></div>
+
+
+<div class="viewcode-block" id="TestExternalMarket"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket">[docs]</a><span class="k">class</span> <span class="nc">TestExternalMarket</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+
+<div class="viewcode-block" id="TestExternalMarket.messages"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.messages">[docs]</a>    <span class="k">def</span> <span class="nf">messages</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span><span class="p">):</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">fill_snap</span><span class="p">(</span><span class="n">b_lvl_3</span><span class="p">)</span>
+
+        <span class="n">prev_seq</span> <span class="o">=</span> <span class="n">b_lvl_3</span><span class="p">[</span><span class="s1">&#39;sequence&#39;</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">message</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">messages</span><span class="p">):</span>
+            <span class="n">seq</span> <span class="o">=</span> <span class="n">message</span><span class="p">[</span><span class="s1">&#39;sequence&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">seq</span><span class="p">,</span> <span class="n">prev_seq</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">prev_seq</span> <span class="o">=</span> <span class="n">seq</span>
+
+            <span class="k">if</span> <span class="s1">&#39;price&#39;</span> <span class="ow">in</span> <span class="n">message</span><span class="p">:</span>
+                <span class="n">message</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">]),</span> <span class="n">tick_dec</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s1">&#39;size&#39;</span> <span class="ow">in</span> <span class="n">message</span><span class="p">:</span>
+                <span class="n">message</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">message</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+            <span class="k">if</span> <span class="s1">&#39;funds&#39;</span> <span class="ow">in</span> <span class="n">message</span><span class="p">:</span>
+                <span class="n">message</span><span class="p">[</span><span class="s1">&#39;funds&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="s1">&#39;funds&#39;</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">message</span><span class="p">[</span><span class="s1">&#39;funds&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+            <span class="k">if</span> <span class="s1">&#39;side&#39;</span> <span class="ow">in</span> <span class="n">message</span><span class="p">:</span>
+                <span class="n">message</span><span class="p">[</span><span class="s1">&#39;side&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">BUY</span> <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="s1">&#39;side&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;buy&#39;</span> <span class="k">else</span> <span class="n">SELL</span>
+
+            <span class="n">message</span><span class="p">[</span><span class="s1">&#39;trader_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">EXT_ID</span>
+
+            <span class="n">mess</span> <span class="o">=</span> <span class="n">SimpleNamespace</span><span class="p">(</span><span class="o">**</span><span class="n">message</span><span class="p">)</span>
+            <span class="n">m</span><span class="o">.</span><span class="n">send_message</span><span class="p">(</span><span class="n">mess</span><span class="p">,</span> <span class="n">external</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">seq</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">[</span><span class="s1">&#39;sequence&#39;</span><span class="p">])</span>
+        <span class="n">snap</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">ob</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_snap</span><span class="p">()</span>
+        <span class="n">corr_snap</span> <span class="o">=</span> <span class="n">agg_snap</span><span class="p">(</span><span class="n">e_lvl_3</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">price</span> <span class="ow">in</span> <span class="n">corr_snap</span><span class="p">[</span><span class="s1">&#39;asks&#39;</span><span class="p">]:</span>
+            <span class="n">corr</span> <span class="o">=</span> <span class="n">corr_snap</span><span class="p">[</span><span class="s1">&#39;asks&#39;</span><span class="p">][</span><span class="n">price</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">price_level</span><span class="p">(</span><span class="n">corr</span><span class="p">,</span> <span class="n">price</span><span class="p">,</span> <span class="s1">&#39;asks&#39;</span><span class="p">,</span> <span class="n">snap</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">price</span> <span class="ow">in</span> <span class="n">corr_snap</span><span class="p">[</span><span class="s1">&#39;bids&#39;</span><span class="p">]:</span>
+            <span class="n">corr</span> <span class="o">=</span> <span class="n">corr_snap</span><span class="p">[</span><span class="s1">&#39;bids&#39;</span><span class="p">][</span><span class="n">price</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">price_level</span><span class="p">(</span><span class="n">corr</span><span class="p">,</span> <span class="n">price</span><span class="p">,</span> <span class="s1">&#39;bids&#39;</span><span class="p">,</span> <span class="n">snap</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.fill_snap"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.fill_snap">[docs]</a>    <span class="k">def</span> <span class="nf">fill_snap</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">m_type</span><span class="p">,</span> <span class="n">price_level_type</span><span class="p">,</span> <span class="n">price_levels_type</span><span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="n">m_type</span> <span class="o">==</span> <span class="s1">&#39;py&#39;</span><span class="p">:</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="n">ExternalMarket</span><span class="p">(</span><span class="n">tick_size</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">ob_type</span><span class="o">=</span><span class="s1">&#39;py&#39;</span><span class="p">,</span>
+                               <span class="n">price_level_type</span><span class="o">=</span><span class="n">price_level_type</span><span class="p">,</span> <span class="n">price_levels_type</span><span class="o">=</span><span class="n">price_levels_type</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">m_type</span> <span class="o">==</span> <span class="s1">&#39;cy_order_book&#39;</span><span class="p">:</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="n">CyExternalMarket</span><span class="p">()</span>
+
+        <span class="n">m</span><span class="o">.</span><span class="n">fill_snap</span><span class="p">(</span><span class="n">b_lvl_3</span><span class="p">)</span>
+        <span class="n">snap</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">ob</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_snap</span><span class="p">()</span>
+        <span class="n">corr_snap</span> <span class="o">=</span> <span class="n">agg_snap</span><span class="p">(</span><span class="n">b_lvl_3</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">price</span> <span class="ow">in</span> <span class="n">corr_snap</span><span class="p">[</span><span class="s1">&#39;asks&#39;</span><span class="p">]:</span>
+            <span class="n">corr</span> <span class="o">=</span> <span class="n">corr_snap</span><span class="p">[</span><span class="s1">&#39;asks&#39;</span><span class="p">][</span><span class="n">price</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">price_level</span><span class="p">(</span><span class="n">corr</span><span class="p">,</span> <span class="n">price</span><span class="p">,</span> <span class="s1">&#39;asks&#39;</span><span class="p">,</span> <span class="n">snap</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">price</span> <span class="ow">in</span> <span class="n">corr_snap</span><span class="p">[</span><span class="s1">&#39;bids&#39;</span><span class="p">]:</span>
+            <span class="n">corr</span> <span class="o">=</span> <span class="n">corr_snap</span><span class="p">[</span><span class="s1">&#39;bids&#39;</span><span class="p">][</span><span class="n">price</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">price_level</span><span class="p">(</span><span class="n">corr</span><span class="p">,</span> <span class="n">price</span><span class="p">,</span> <span class="s1">&#39;bids&#39;</span><span class="p">,</span> <span class="n">snap</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">m_type</span> <span class="o">==</span> <span class="s1">&#39;py&#39;</span><span class="p">:</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="n">ExternalMarket</span><span class="p">(</span><span class="n">tick_size</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">ob_type</span><span class="o">=</span><span class="s1">&#39;py&#39;</span><span class="p">,</span>
+                               <span class="n">price_level_type</span><span class="o">=</span><span class="n">price_level_type</span><span class="p">,</span> <span class="n">price_levels_type</span><span class="o">=</span><span class="n">price_levels_type</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">m_type</span> <span class="o">==</span> <span class="s1">&#39;cy_order_book&#39;</span><span class="p">:</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="n">CyExternalMarket</span><span class="p">()</span>
+
+        <span class="n">m</span><span class="o">.</span><span class="n">fill_snap</span><span class="p">(</span><span class="n">e_lvl_3</span><span class="p">)</span>
+        <span class="n">snap</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">ob</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_snap</span><span class="p">()</span>
+        <span class="n">corr_snap</span> <span class="o">=</span> <span class="n">agg_snap</span><span class="p">(</span><span class="n">e_lvl_3</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">price</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">corr_snap</span><span class="p">[</span><span class="s1">&#39;asks&#39;</span><span class="p">]):</span>
+            <span class="n">corr</span> <span class="o">=</span> <span class="n">corr_snap</span><span class="p">[</span><span class="s1">&#39;asks&#39;</span><span class="p">][</span><span class="n">price</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">price_level</span><span class="p">(</span><span class="n">corr</span><span class="p">,</span> <span class="n">price</span><span class="p">,</span> <span class="s1">&#39;asks&#39;</span><span class="p">,</span> <span class="n">snap</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">price</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">corr_snap</span><span class="p">[</span><span class="s1">&#39;bids&#39;</span><span class="p">]):</span>
+            <span class="n">corr</span> <span class="o">=</span> <span class="n">corr_snap</span><span class="p">[</span><span class="s1">&#39;bids&#39;</span><span class="p">][</span><span class="n">price</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">price_level</span><span class="p">(</span><span class="n">corr</span><span class="p">,</span> <span class="n">price</span><span class="p">,</span> <span class="s1">&#39;bids&#39;</span><span class="p">,</span> <span class="n">snap</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.price_level"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.price_level">[docs]</a>    <span class="k">def</span> <span class="nf">price_level</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">corr</span><span class="p">,</span> <span class="n">price</span><span class="p">,</span> <span class="n">side</span><span class="p">,</span> <span class="n">snap</span><span class="p">,</span> <span class="n">m</span><span class="p">):</span>
+        <span class="n">price_int</span> <span class="o">=</span> <span class="n">to_int</span><span class="p">(</span><span class="n">price</span><span class="p">,</span> <span class="n">multiplier</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">ob</span><span class="o">.</span><span class="n">price_levels</span><span class="p">,</span> <span class="s1">&#39;max_price&#39;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">ob</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">min_price</span> <span class="o">&lt;</span> <span class="n">price_int</span> <span class="o">&lt;</span> <span class="n">m</span><span class="o">.</span><span class="n">ob</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">max_price</span><span class="p">:</span>
+                <span class="n">market</span> <span class="o">=</span> <span class="n">snap</span><span class="p">[</span><span class="n">side</span><span class="p">][</span><span class="n">price_int</span><span class="p">]</span>
+                <span class="n">diff</span> <span class="o">=</span> <span class="n">corr</span> <span class="o">-</span> <span class="n">market</span>
+                <span class="k">assert</span> <span class="nb">abs</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">10e-10</span><span class="p">,</span> <span class="s1">&#39;Diff :</span><span class="si">{:.2e}</span><span class="s1"> in price:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">diff</span><span class="p">,</span> <span class="n">price</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">market</span> <span class="o">=</span> <span class="n">snap</span><span class="p">[</span><span class="n">side</span><span class="p">][</span><span class="n">price_int</span><span class="p">]</span>
+            <span class="n">diff</span> <span class="o">=</span> <span class="n">corr</span> <span class="o">-</span> <span class="n">market</span>
+            <span class="k">assert</span> <span class="nb">abs</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">10e-10</span><span class="p">,</span> <span class="s1">&#39;Diff :</span><span class="si">{:.2e}</span><span class="s1"> in price:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">diff</span><span class="p">,</span> <span class="n">price</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_send_message_sorted_ordered"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_send_message_sorted_ordered">[docs]</a>    <span class="k">def</span> <span class="nf">test_send_message_sorted_ordered</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">ExternalMarket</span><span class="p">(</span><span class="n">price_level_type</span><span class="o">=</span><span class="s1">&#39;ordered_dict&#39;</span><span class="p">,</span>
+                 <span class="n">price_levels_type</span><span class="o">=</span><span class="s1">&#39;sorted_dict&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">messages</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_fill_snap_sorted_ordered"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_fill_snap_sorted_ordered">[docs]</a>    <span class="k">def</span> <span class="nf">test_fill_snap_sorted_ordered</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fill_snap</span><span class="p">(</span><span class="s1">&#39;py&#39;</span><span class="p">,</span> <span class="s1">&#39;ordered_dict&#39;</span><span class="p">,</span> <span class="s1">&#39;sorted_dict&#39;</span><span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_fill_snap_rb_ordered"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_fill_snap_rb_ordered">[docs]</a>    <span class="k">def</span> <span class="nf">test_fill_snap_rb_ordered</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fill_snap</span><span class="p">(</span><span class="s1">&#39;py&#39;</span><span class="p">,</span><span class="s1">&#39;ordered_dict&#39;</span><span class="p">,</span> <span class="s1">&#39;fast_rb&#39;</span> <span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_send_message_rb_ordered"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_send_message_rb_ordered">[docs]</a>    <span class="k">def</span> <span class="nf">test_send_message_rb_ordered</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">ExternalMarket</span><span class="p">(</span><span class="n">price_level_type</span><span class="o">=</span><span class="s1">&#39;ordered_dict&#39;</span><span class="p">,</span>
+                 <span class="n">price_levels_type</span><span class="o">=</span><span class="s1">&#39;fast_rb&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">messages</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_send_message_avl_ordered"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_send_message_avl_ordered">[docs]</a>    <span class="k">def</span> <span class="nf">test_send_message_avl_ordered</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">ExternalMarket</span><span class="p">(</span><span class="n">price_level_type</span><span class="o">=</span><span class="s1">&#39;ordered_dict&#39;</span><span class="p">,</span>
+                 <span class="n">price_levels_type</span><span class="o">=</span><span class="s1">&#39;fast_avl&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">messages</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_fill_snap_avl_ordered"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_fill_snap_avl_ordered">[docs]</a>    <span class="k">def</span> <span class="nf">test_fill_snap_avl_ordered</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fill_snap</span><span class="p">(</span><span class="s1">&#39;py&#39;</span><span class="p">,</span><span class="s1">&#39;ordered_dict&#39;</span><span class="p">,</span> <span class="s1">&#39;fast_avl&#39;</span><span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_fill_snap_avl_deque"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_fill_snap_avl_deque">[docs]</a>    <span class="k">def</span> <span class="nf">test_fill_snap_avl_deque</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fill_snap</span><span class="p">(</span><span class="s1">&#39;py&#39;</span><span class="p">,</span><span class="s1">&#39;deque&#39;</span><span class="p">,</span> <span class="s1">&#39;fast_avl&#39;</span><span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_send_message_avl_deque"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_send_message_avl_deque">[docs]</a>    <span class="k">def</span> <span class="nf">test_send_message_avl_deque</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">ExternalMarket</span><span class="p">(</span><span class="n">price_level_type</span><span class="o">=</span><span class="s1">&#39;deque&#39;</span><span class="p">,</span>
+                 <span class="n">price_levels_type</span><span class="o">=</span><span class="s1">&#39;fast_avl&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">messages</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_fill_snap_rb_deque"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_fill_snap_rb_deque">[docs]</a>    <span class="k">def</span> <span class="nf">test_fill_snap_rb_deque</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fill_snap</span><span class="p">(</span><span class="s1">&#39;py&#39;</span><span class="p">,</span><span class="s1">&#39;deque&#39;</span><span class="p">,</span> <span class="s1">&#39;fast_rb&#39;</span><span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_send_message_rb_deque"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_send_message_rb_deque">[docs]</a>    <span class="k">def</span> <span class="nf">test_send_message_rb_deque</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">ExternalMarket</span><span class="p">(</span><span class="n">price_level_type</span><span class="o">=</span><span class="s1">&#39;deque&#39;</span><span class="p">,</span>
+                 <span class="n">price_levels_type</span><span class="o">=</span><span class="s1">&#39;fast_rb&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">messages</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_fill_snap_list_deque"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_fill_snap_list_deque">[docs]</a>    <span class="k">def</span> <span class="nf">test_fill_snap_list_deque</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fill_snap</span><span class="p">(</span><span class="s1">&#39;py&#39;</span><span class="p">,</span><span class="s1">&#39;deque&#39;</span><span class="p">,</span> <span class="s1">&#39;list&#39;</span> <span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_send_message_list_deque"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_send_message_list_deque">[docs]</a>    <span class="k">def</span> <span class="nf">test_send_message_list_deque</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">ExternalMarket</span><span class="p">(</span><span class="n">price_level_type</span><span class="o">=</span><span class="s1">&#39;deque&#39;</span><span class="p">,</span>
+                 <span class="n">price_levels_type</span><span class="o">=</span><span class="s1">&#39;list&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">messages</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_fill_snap_avl_cydeque"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_fill_snap_avl_cydeque">[docs]</a>    <span class="k">def</span> <span class="nf">test_fill_snap_avl_cydeque</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fill_snap</span><span class="p">(</span><span class="s1">&#39;py&#39;</span><span class="p">,</span> <span class="s1">&#39;cydeque&#39;</span><span class="p">,</span> <span class="s1">&#39;fast_avl&#39;</span><span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_send_message_avl_cydeque"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_send_message_avl_cydeque">[docs]</a>    <span class="k">def</span> <span class="nf">test_send_message_avl_cydeque</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">ExternalMarket</span><span class="p">(</span><span class="n">price_level_type</span><span class="o">=</span><span class="s1">&#39;cydeque&#39;</span><span class="p">,</span>
+                 <span class="n">price_levels_type</span><span class="o">=</span><span class="s1">&#39;fast_avl&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">messages</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_fill_snap_cylist_cydeque"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_fill_snap_cylist_cydeque">[docs]</a>    <span class="k">def</span> <span class="nf">test_fill_snap_cylist_cydeque</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fill_snap</span><span class="p">(</span><span class="s1">&#39;py&#39;</span><span class="p">,</span> <span class="s1">&#39;cydeque&#39;</span><span class="p">,</span> <span class="s1">&#39;cylist&#39;</span> <span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_send_message_cylist_cydeque"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_send_message_cylist_cydeque">[docs]</a>    <span class="k">def</span> <span class="nf">test_send_message_cylist_cydeque</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">ExternalMarket</span><span class="p">(</span><span class="n">price_level_type</span><span class="o">=</span><span class="s1">&#39;cydeque&#39;</span><span class="p">,</span>
+                 <span class="n">price_levels_type</span><span class="o">=</span><span class="s1">&#39;cylist&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">messages</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_fill_snap_cymarket_cylist_cydeque"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_fill_snap_cymarket_cylist_cydeque">[docs]</a>    <span class="k">def</span> <span class="nf">test_fill_snap_cymarket_cylist_cydeque</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fill_snap</span><span class="p">(</span><span class="s1">&#39;cy_order_book&#39;</span><span class="p">,</span><span class="s1">&#39;cydeque&#39;</span><span class="p">,</span> <span class="s1">&#39;cylist&#39;</span> <span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestExternalMarket.test_send_message_cymarket_cylist_cydeque"><a class="viewcode-back" href="../../source/tests.html#tests.test_externalMarket.TestExternalMarket.test_send_message_cymarket_cylist_cydeque">[docs]</a>    <span class="k">def</span> <span class="nf">test_send_message_cymarket_cylist_cydeque</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span> <span class="o">=</span> <span class="n">load</span><span class="p">()</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">CyExternalMarket</span><span class="p">(</span><span class="n">price_level_type</span><span class="o">=</span><span class="s1">&#39;cydeque&#39;</span><span class="p">,</span>
+                 <span class="n">price_levels_type</span><span class="o">=</span><span class="s1">&#39;cylist&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">messages</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">b_lvl_3</span><span class="p">,</span> <span class="n">e_lvl_3</span><span class="p">,</span> <span class="n">messages</span><span class="p">)</span></div></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Olle Dahlen.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.1',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

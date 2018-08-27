@@ -1,0 +1,38 @@
+cy\_order\_book package
+=======================
+
+Submodules
+----------
+
+cy\_order\_book.constants module
+--------------------------------
+
+.. automodule:: cy_order_book.constants
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+cy\_order\_book.list\_price\_level module
+-----------------------------------------
+
+.. automodule:: cy_order_book.list_price_level
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+cy\_order\_book.price\_level module
+-----------------------------------
+
+.. automodule:: cy_order_book.price_level
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: cy_order_book
+    :members:
+    :undoc-members:
+    :show-inheritance:

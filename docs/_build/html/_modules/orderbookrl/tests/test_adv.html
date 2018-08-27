@@ -1,0 +1,266 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>orderbookrl.tests.test_adv &mdash; OrderBookRL 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> OrderBookRL
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">OrderBookRL</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+      <li>orderbookrl.tests.test_adv</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for orderbookrl.tests.test_adv</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">ray.rllib.agents.ppo</span> <span class="k">import</span> <span class="n">PPOAgent</span>
+<span class="kn">from</span> <span class="nn">ray.rllib.agents.ppo.ppo_policy_graph</span> <span class="k">import</span> <span class="n">PPOPolicyGraph</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">ray.rllib.evaluation.postprocessing</span> <span class="k">import</span> <span class="n">discount</span>
+<span class="kn">from</span> <span class="nn">ray.rllib.evaluation.sample_batch</span> <span class="k">import</span> <span class="n">SampleBatch</span>
+
+
+<div class="viewcode-block" id="compute_advantages"><a class="viewcode-back" href="../../../source/orderbookrl.tests.html#orderbookrl.tests.test_adv.compute_advantages">[docs]</a><span class="k">def</span> <span class="nf">compute_advantages</span><span class="p">(</span><span class="n">rollout</span><span class="p">,</span> <span class="n">last_r</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span> <span class="n">lambda_</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">use_gae</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Given a rollout, compute its value targets and the advantage.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        rollout (SampleBatch): SampleBatch of a single trajectory</span>
+<span class="sd">        last_r (float): Value estimation for last observation</span>
+<span class="sd">        gamma (float): Discount factor.</span>
+<span class="sd">        lambda_ (float): Parameter for GAE</span>
+<span class="sd">        use_gae (bool): Using Generalized Advantage Estamation</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        SampleBatch (SampleBatch): Object with experience from rollout and</span>
+<span class="sd">            processed rewards.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">traj</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">trajsize</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">rollout</span><span class="p">[</span><span class="s2">&quot;actions&quot;</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">rollout</span><span class="p">:</span>
+        <span class="n">traj</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">rollout</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">use_gae</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="s2">&quot;vf_preds&quot;</span> <span class="ow">in</span> <span class="n">rollout</span><span class="p">,</span> <span class="s2">&quot;Values not found!&quot;</span>
+        <span class="n">vpred_t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">rollout</span><span class="p">[</span><span class="s2">&quot;vf_preds&quot;</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">last_r</span><span class="p">])])</span>
+        <span class="c1"># delta_t = traj[&quot;rewards&quot;] + gamma * vpred_t[1:] - vpred_t[:-1]</span>
+        <span class="n">delta_t</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">traj</span><span class="p">[</span><span class="s1">&#39;rewards&#39;</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">gamma</span> <span class="o">*</span> <span class="n">vpred_t</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">vpred_t</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># This formula for the advantage comes</span>
+        <span class="c1"># &quot;Generalized Advantage Estimation&quot;: https://arxiv.org/abs/1506.02438</span>
+        <span class="n">traj</span><span class="p">[</span><span class="s2">&quot;advantages&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">discount</span><span class="p">(</span><span class="n">delta_t</span><span class="p">,</span> <span class="n">gamma</span> <span class="o">*</span> <span class="n">lambda_</span><span class="p">)</span>
+        <span class="n">traj</span><span class="p">[</span><span class="s2">&quot;value_targets&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">traj</span><span class="p">[</span><span class="s2">&quot;advantages&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">traj</span><span class="p">[</span><span class="s2">&quot;vf_preds&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">rewards_plus_v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">rollout</span><span class="p">[</span><span class="s2">&quot;rewards&quot;</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">last_r</span><span class="p">])])</span>
+        <span class="n">traj</span><span class="p">[</span><span class="s2">&quot;advantages&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">discount</span><span class="p">(</span><span class="n">rewards_plus_v</span><span class="p">,</span> <span class="n">gamma</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># TODO(ekl): support using a critic without GAE</span>
+        <span class="n">traj</span><span class="p">[</span><span class="s2">&quot;value_targets&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">traj</span><span class="p">[</span><span class="s2">&quot;advantages&quot;</span><span class="p">])</span>
+
+    <span class="n">traj</span><span class="p">[</span><span class="s2">&quot;advantages&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">traj</span><span class="p">[</span><span class="s2">&quot;advantages&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+    <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">val</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">trajsize</span> <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">traj</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> \
+        <span class="s2">&quot;Rollout stacked incorrectly!&quot;</span>
+    <span class="k">return</span> <span class="n">SampleBatch</span><span class="p">(</span><span class="n">traj</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AdvPPOGraph"><a class="viewcode-back" href="../../../source/orderbookrl.tests.html#orderbookrl.tests.test_adv.AdvPPOGraph">[docs]</a><span class="k">class</span> <span class="nc">AdvPPOGraph</span><span class="p">(</span><span class="n">PPOPolicyGraph</span><span class="p">):</span>
+<div class="viewcode-block" id="AdvPPOGraph.postprocess_trajectory"><a class="viewcode-back" href="../../../source/orderbookrl.tests.html#orderbookrl.tests.test_adv.AdvPPOGraph.postprocess_trajectory">[docs]</a>    <span class="k">def</span> <span class="nf">postprocess_trajectory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_batch</span><span class="p">,</span> <span class="n">other_agent_batches</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">last_r</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">batch</span> <span class="o">=</span> <span class="n">compute_advantages</span><span class="p">(</span>
+            <span class="n">sample_batch</span><span class="p">,</span>
+            <span class="n">last_r</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;gamma&quot;</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;lambda&quot;</span><span class="p">],</span>
+            <span class="n">use_gae</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;use_gae&quot;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">batch</span></div></div>
+
+
+<div class="viewcode-block" id="PPOAdv"><a class="viewcode-back" href="../../../source/orderbookrl.tests.html#orderbookrl.tests.test_adv.PPOAdv">[docs]</a><span class="k">class</span> <span class="nc">PPOAdv</span><span class="p">(</span><span class="n">PPOAgent</span><span class="p">):</span>
+    <span class="n">_policy_graph</span> <span class="o">=</span> <span class="n">AdvPPOGraph</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Olle Dahlen.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.1',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,94 @@
+rl package
+==========
+
+Submodules
+----------
+
+rl.abstract\_envs module
+------------------------
+
+.. automodule:: rl.abstract_envs
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+rl.app module
+-------------
+
+.. automodule:: rl.app
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+rl.dist\_envs module
+--------------------
+
+.. automodule:: rl.dist_envs
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+rl.env\_utils module
+--------------------
+
+.. automodule:: rl.env_utils
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+rl.ewma module
+--------------
+
+.. automodule:: rl.ewma
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+rl.market\_env module
+---------------------
+
+.. automodule:: rl.market_env
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+rl.market\_order\_envs module
+-----------------------------
+
+.. automodule:: rl.market_order_envs
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+rl.multi\_agent\_envs module
+----------------------------
+
+.. automodule:: rl.multi_agent_envs
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+rl.phi module
+-------------
+
+.. automodule:: rl.phi
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+rl.test\_ppo module
+-------------------
+
+.. automodule:: rl.test_ppo
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: rl
+    :members:
+    :undoc-members:
+    :show-inheritance:

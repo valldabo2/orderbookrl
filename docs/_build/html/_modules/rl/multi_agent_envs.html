@@ -1,0 +1,569 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>rl.multi_agent_envs &mdash; OrderBookRL 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> OrderBookRL
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">OrderBookRL</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>rl.multi_agent_envs</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for rl.multi_agent_envs</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">rl.market_env</span> <span class="k">import</span> <span class="n">MarketEnv</span>
+<span class="kn">from</span> <span class="nn">rl.dist_envs</span> <span class="k">import</span> <span class="n">DistEnv</span><span class="p">,</span> <span class="n">SpreadEnv</span>
+<span class="kn">from</span> <span class="nn">rl.market_order_envs</span> <span class="k">import</span> <span class="n">MarketOrderEnv</span>
+<span class="kn">from</span> <span class="nn">rl.app</span> <span class="k">import</span> <span class="n">get_multienv_app</span>
+
+<span class="kn">from</span> <span class="nn">order_book.order_types</span> <span class="k">import</span> <span class="n">limit_message</span>
+<span class="kn">from</span> <span class="nn">order_book.constants</span> <span class="k">import</span> <span class="o">*</span>
+
+<span class="kn">import</span> <span class="nn">gym</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="n">order_tracking_types</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;dist&#39;</span><span class="p">,</span> <span class="s1">&#39;spread&#39;</span><span class="p">}</span>
+<span class="n">matching_order_envs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;market&#39;</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="MultiAgentOrderEnv"><a class="viewcode-back" href="../../source/rl.html#rl.multi_agent_envs.MultiAgentOrderEnv">[docs]</a><span class="k">class</span> <span class="nc">MultiAgentOrderEnv</span><span class="p">(</span><span class="n">MarketEnv</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;An environment that hosts multiple independent agents.</span>
+<span class="sd">        Agents are identified by (string) agent ids. Note that these &quot;agents&quot; here</span>
+<span class="sd">        are not to be confused with RLlib agents.</span>
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; env = MyMultiAgentEnv()</span>
+<span class="sd">            &gt;&gt;&gt; obs = env.reset()</span>
+<span class="sd">            &gt;&gt;&gt; print(obs)</span>
+<span class="sd">            {</span>
+<span class="sd">                &quot;car_0&quot;: [2.4, 1.6],</span>
+<span class="sd">                &quot;car_1&quot;: [3.4, -3.2],</span>
+<span class="sd">                &quot;traffic_light_1&quot;: [0, 3, 5, 1],</span>
+<span class="sd">            }</span>
+<span class="sd">            &gt;&gt;&gt; obs, rewards, dones, infos = env.step(</span>
+<span class="sd">                action_dict={</span>
+<span class="sd">                    &quot;car_0&quot;: 1, &quot;car_1&quot;: 0, &quot;traffic_light_1&quot;: 2,</span>
+<span class="sd">                })</span>
+<span class="sd">            &gt;&gt;&gt; print(rewards)</span>
+<span class="sd">            {</span>
+<span class="sd">                &quot;car_0&quot;: 3,</span>
+<span class="sd">                &quot;car_1&quot;: -1,</span>
+<span class="sd">                &quot;traffic_light_1&quot;: 0,</span>
+<span class="sd">            }</span>
+<span class="sd">            &gt;&gt;&gt; print(dones)</span>
+<span class="sd">            {</span>
+<span class="sd">                &quot;car_0&quot;: False,</span>
+<span class="sd">                &quot;car_1&quot;: True,</span>
+<span class="sd">                &quot;__all__&quot;: False,</span>
+<span class="sd">            }</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="MultiAgentOrderEnv.__init__"><a class="viewcode-back" href="../../source/rl.html#rl.multi_agent_envs.MultiAgentOrderEnv.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_list</span><span class="p">,</span> <span class="n">random_agent_list</span><span class="o">=</span><span class="p">[],</span> <span class="n">market_type</span><span class="o">=</span><span class="s1">&#39;cyext&#39;</span><span class="p">,</span>
+                 <span class="n">market_setup</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">tick_size</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">ob_type</span><span class="o">=</span><span class="s1">&#39;cy_order_book&#39;</span><span class="p">,</span> <span class="n">order_level_type</span><span class="o">=</span><span class="s1">&#39;cydeque&#39;</span><span class="p">,</span>
+                                   <span class="n">order_levels_type</span><span class="o">=</span><span class="s1">&#39;cylist&#39;</span><span class="p">,</span> <span class="n">max_price</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span> <span class="n">min_price</span><span class="o">=</span><span class="mi">50</span><span class="p">),</span> <span class="n">initial_funds</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span> <span class="n">episode_seconds</span><span class="o">=</span><span class="mi">60</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">MultiAgentOrderEnv</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">market_type</span><span class="p">,</span> <span class="n">market_setup</span><span class="p">,</span> <span class="n">initial_funds</span><span class="p">,</span> <span class="n">T_ID</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">trader_id</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="c1"># Init random spread</span>
+        <span class="n">random_agent_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;spread_-1&#39;</span><span class="p">)</span>
+        <span class="n">tot_agent_list</span> <span class="o">=</span> <span class="n">agent_list</span> <span class="o">+</span> <span class="n">random_agent_list</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setup_agent_dict</span><span class="p">(</span><span class="n">tot_agent_list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">random_agents_list</span> <span class="o">=</span> <span class="n">random_agent_list</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agents_list</span> <span class="o">=</span> <span class="n">agent_list</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">market_order_random_agents</span> <span class="o">=</span> <span class="p">[</span><span class="n">agent_id</span> <span class="k">for</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="n">random_agent_list</span> <span class="k">if</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="n">matching_order_envs</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">non_market_order_random_agents</span> <span class="o">=</span> <span class="p">[</span><span class="n">agent_id</span> <span class="k">for</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="n">random_agent_list</span> <span class="k">if</span> <span class="n">agent_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">matching_order_envs</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">market_order_agents</span> <span class="o">=</span> <span class="p">[</span><span class="n">agent_id</span> <span class="k">for</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="n">agent_list</span> <span class="k">if</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="n">matching_order_envs</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">non_market_order_agents</span> <span class="o">=</span> <span class="p">[</span><span class="n">agent_id</span> <span class="k">for</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="n">random_agent_list</span> <span class="k">if</span> <span class="n">agent_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">matching_order_envs</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">episode_seconds</span> <span class="o">=</span> <span class="n">episode_seconds</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">traders_type</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="n">tot_agent_list</span><span class="p">:</span>
+            <span class="n">agent_type</span><span class="p">,</span> <span class="n">trader_id</span> <span class="o">=</span> <span class="n">agent_id</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">traders_type</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">trader_id</span><span class="p">)]</span> <span class="o">=</span> <span class="n">agent_type</span></div>
+
+<div class="viewcode-block" id="MultiAgentOrderEnv.setup_agent_dict"><a class="viewcode-back" href="../../source/rl.html#rl.multi_agent_envs.MultiAgentOrderEnv.setup_agent_dict">[docs]</a>    <span class="k">def</span> <span class="nf">setup_agent_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">agents_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="n">agent_list</span><span class="p">:</span>
+            <span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">agent_type</span><span class="p">,</span> <span class="n">trader_id</span> <span class="o">=</span> <span class="n">agent_id</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">agent_type</span> <span class="o">==</span> <span class="s1">&#39;dist&#39;</span><span class="p">:</span>
+                <span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">DistEnv</span><span class="p">(</span><span class="n">T_ID</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">trader_id</span><span class="p">),</span> <span class="n">market_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_market_type</span><span class="p">,</span> <span class="n">market_setup</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_market_setup</span><span class="p">)</span>
+                <span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">snap</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;asks&#39;</span><span class="p">:[],</span> <span class="s1">&#39;bids&#39;</span><span class="p">:</span> <span class="p">[]}</span>
+            <span class="k">elif</span> <span class="n">agent_type</span> <span class="o">==</span> <span class="s1">&#39;spread&#39;</span><span class="p">:</span>
+                <span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">SpreadEnv</span><span class="p">(</span><span class="n">T_ID</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">trader_id</span><span class="p">),</span> <span class="n">market_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_market_type</span><span class="p">,</span> <span class="n">market_setup</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_market_setup</span><span class="p">)</span>
+                <span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">snap</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;asks&#39;</span><span class="p">:[],</span> <span class="s1">&#39;bids&#39;</span><span class="p">:</span> <span class="p">[]}</span>
+            <span class="k">elif</span> <span class="n">agent_type</span> <span class="o">==</span> <span class="s1">&#39;market&#39;</span><span class="p">:</span>
+                <span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">MarketOrderEnv</span><span class="p">(</span><span class="n">T_ID</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">trader_id</span><span class="p">),</span> <span class="n">market_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_market_type</span><span class="p">,</span> <span class="n">market_setup</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_market_setup</span><span class="p">)</span>
+                <span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">snap</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;asks&#39;</span><span class="p">:[],</span> <span class="s1">&#39;bids&#39;</span><span class="p">:</span> <span class="p">[]}</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s1">&#39;Agent_type:</span><span class="si">{}</span><span class="s1"> is not implemented&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">agent_id</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">agents_dict</span></div>
+
+<div class="viewcode-block" id="MultiAgentOrderEnv.step"><a class="viewcode-back" href="../../source/rl.html#rl.multi_agent_envs.MultiAgentOrderEnv.step">[docs]</a>    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action_dict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Run one timestep of the environment&#39;s dynamics. When end of</span>
+<span class="sd">        episode is reached, you are responsible for calling `reset()`</span>
+<span class="sd">        to reset this environment&#39;s state.</span>
+<span class="sd">        Accepts an action and returns a tuple (observation, reward, done, info).</span>
+<span class="sd">        Args:</span>
+<span class="sd">            action (object): an action provided by the environment</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            observation (object): agent&#39;s observation of the current environment</span>
+<span class="sd">            reward (float) : amount of reward returned after previous action</span>
+<span class="sd">            done (boolean): whether the episode has ended, in which case further step() calls will return undefined results</span>
+<span class="sd">            info (dict): contains auxiliary diagnostic information (helpful for debugging, and sometimes learning)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;Example function with PEP 484 type annotations.</span>
+
+<span class="sd">        The return type must be duplicated in the docstring to comply</span>
+<span class="sd">        with the NumPy docstring style.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        param1</span>
+<span class="sd">            The first parameter.</span>
+<span class="sd">        param2</span>
+<span class="sd">            The second parameter.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        bool</span>
+<span class="sd">            True if successful, False otherwise.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">trades</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">done</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">obs</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="n">ask</span><span class="p">,</span> <span class="n">bid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span><span class="p">[</span><span class="n">Q_ASK</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span><span class="p">[</span><span class="n">Q_BID</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">ask</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">ob</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">max_price</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">init_sell</span><span class="p">(</span><span class="s1">&#39;spread_-1&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">ob</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_quotes</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">bid</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">ob</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">min_price</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">init_buy</span><span class="p">(</span><span class="s1">&#39;spread_-1&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">ob</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_quotes</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_agents_list</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">capital</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span> <span class="c1"># Refills random agents capital</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">capital</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">initial_funds</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
+            <span class="n">messages</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_messages</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%-d</span><span class="s2"> %H:%M:%S.</span><span class="si">%f</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">trades_</span><span class="p">,</span> <span class="n">done_</span><span class="p">,</span> <span class="n">info_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_messages</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
+            <span class="n">trades</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">trades_</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_list</span><span class="p">:</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">action_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span>
+            <span class="n">messages</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_messages</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%-d</span><span class="s2"> %H:%M:%S.</span><span class="si">%f</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">trades_</span><span class="p">,</span> <span class="n">done_</span><span class="p">,</span> <span class="n">info_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_messages</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
+            <span class="n">trades</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">trades_</span><span class="p">)</span>
+            <span class="n">info</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">info_</span>
+
+        <span class="n">reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_reward</span><span class="p">(</span><span class="n">trades</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">ob</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_quotes</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_list</span><span class="p">:</span>
+            <span class="n">done</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">capital</span> <span class="o">&lt;=</span> <span class="mi">0</span>
+            <span class="n">obs</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quotes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_private_variables</span><span class="p">())</span>
+
+        <span class="n">done</span><span class="p">[</span><span class="s1">&#39;__all__&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_time</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">episode_seconds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trades_list</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">trades</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">obs</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">info</span></div>
+
+<div class="viewcode-block" id="MultiAgentOrderEnv.send_messages"><a class="viewcode-back" href="../../source/rl.html#rl.multi_agent_envs.MultiAgentOrderEnv.send_messages">[docs]</a>    <span class="k">def</span> <span class="nf">send_messages</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+        <span class="n">trades</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">mess</span> <span class="ow">in</span> <span class="n">messages</span><span class="p">:</span>
+            <span class="n">trades_</span><span class="p">,</span> <span class="n">oib</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">send_message</span><span class="p">(</span><span class="n">mess</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">oib</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">agent_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">traders_type</span><span class="p">[</span><span class="n">mess</span><span class="o">.</span><span class="n">trader_id</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">mess</span><span class="o">.</span><span class="n">trader_id</span><span class="p">)</span>
+                <span class="n">order_in_book</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">orders_in_book</span><span class="o">.</span><span class="n">add_order</span><span class="p">(</span><span class="n">oib</span><span class="p">[</span><span class="n">OIB_SIDE</span><span class="p">],</span> <span class="n">oib</span><span class="p">[</span><span class="n">OIB_PRICE</span><span class="p">],</span> <span class="n">oib</span><span class="p">[</span><span class="n">OIB_SIZE</span><span class="p">],</span>
+                                                              <span class="bp">self</span><span class="o">.</span><span class="n">T_ID</span><span class="p">,</span> <span class="n">oib</span><span class="p">[</span><span class="n">OIB_ID</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">orders_in_book_dict</span><span class="p">[</span><span class="n">oib</span><span class="p">[</span><span class="n">OIB_ID</span><span class="p">]]</span> <span class="o">=</span> <span class="n">order_in_book</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">trades_</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">trades</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">trades_</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">trades</span><span class="p">,</span> <span class="p">{},</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="MultiAgentOrderEnv.reset"><a class="viewcode-back" href="../../source/rl.html#rl.multi_agent_envs.MultiAgentOrderEnv.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">MarketEnv</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="n">agent_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="n">agent_list</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;spread_-1&#39;</span><span class="p">)</span>
+        <span class="c1"># init limits</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="s1">&#39;spread_-1&#39;</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_limits</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="n">agent_list</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%-d</span><span class="s2"> %H:%M:%S.</span><span class="si">%f</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">ob</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_quotes</span><span class="p">()</span>
+        <span class="n">obs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_obs</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">obs</span></div>
+
+<div class="viewcode-block" id="MultiAgentOrderEnv.init_limits"><a class="viewcode-back" href="../../source/rl.html#rl.multi_agent_envs.MultiAgentOrderEnv.init_limits">[docs]</a>    <span class="k">def</span> <span class="nf">init_limits</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">agent_id</span> <span class="o">=</span> <span class="s1">&#39;spread_-1&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_buy</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_sell</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MultiAgentOrderEnv.init_sell"><a class="viewcode-back" href="../../source/rl.html#rl.multi_agent_envs.MultiAgentOrderEnv.init_sell">[docs]</a>    <span class="k">def</span> <span class="nf">init_sell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">):</span>
+        <span class="n">trades</span><span class="p">,</span> <span class="n">oib</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">send_message</span><span class="p">(</span><span class="n">limit_message</span><span class="p">(</span><span class="n">SELL</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="mi">100</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">multiplier</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">order_in_book</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">orders_in_book</span><span class="o">.</span><span class="n">add_order</span><span class="p">(</span><span class="n">oib</span><span class="p">[</span><span class="n">OIB_SIDE</span><span class="p">],</span> <span class="n">oib</span><span class="p">[</span><span class="n">OIB_PRICE</span><span class="p">],</span>
+                                                                                   <span class="n">oib</span><span class="p">[</span><span class="n">OIB_SIZE</span><span class="p">],</span>
+                                                                                   <span class="bp">self</span><span class="o">.</span><span class="n">T_ID</span><span class="p">,</span> <span class="n">oib</span><span class="p">[</span><span class="n">OIB_ID</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">orders_in_book_dict</span><span class="p">[</span><span class="n">oib</span><span class="p">[</span><span class="n">OIB_ID</span><span class="p">]]</span> <span class="o">=</span> <span class="n">order_in_book</span></div>
+
+<div class="viewcode-block" id="MultiAgentOrderEnv.init_buy"><a class="viewcode-back" href="../../source/rl.html#rl.multi_agent_envs.MultiAgentOrderEnv.init_buy">[docs]</a>    <span class="k">def</span> <span class="nf">init_buy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">):</span>
+        <span class="n">trades</span><span class="p">,</span> <span class="n">oib</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">send_message</span><span class="p">(</span><span class="n">limit_message</span><span class="p">(</span><span class="n">BUY</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="mi">100</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">multiplier</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">order_in_book</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">orders_in_book</span><span class="o">.</span><span class="n">add_order</span><span class="p">(</span><span class="n">oib</span><span class="p">[</span><span class="n">OIB_SIDE</span><span class="p">],</span> <span class="n">oib</span><span class="p">[</span><span class="n">OIB_PRICE</span><span class="p">],</span>
+                                                                                   <span class="n">oib</span><span class="p">[</span><span class="n">OIB_SIZE</span><span class="p">],</span>
+                                                                                   <span class="bp">self</span><span class="o">.</span><span class="n">T_ID</span><span class="p">,</span> <span class="n">oib</span><span class="p">[</span><span class="n">OIB_ID</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">orders_in_book_dict</span><span class="p">[</span><span class="n">oib</span><span class="p">[</span><span class="n">OIB_ID</span><span class="p">]]</span> <span class="o">=</span> <span class="n">order_in_book</span></div>
+
+<div class="viewcode-block" id="MultiAgentOrderEnv.get_messages"><a class="viewcode-back" href="../../source/rl.html#rl.multi_agent_envs.MultiAgentOrderEnv.get_messages">[docs]</a>    <span class="k">def</span> <span class="nf">get_messages</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="MultiAgentOrderEnv.diff"><a class="viewcode-back" href="../../source/rl.html#rl.multi_agent_envs.MultiAgentOrderEnv.diff">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">diff</span><span class="p">(</span><span class="n">new</span><span class="p">,</span> <span class="n">old</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">new</span> <span class="o">-</span> <span class="n">old</span><span class="p">)</span><span class="o">/</span><span class="n">old</span></div>
+
+<div class="viewcode-block" id="MultiAgentOrderEnv.get_reward"><a class="viewcode-back" href="../../source/rl.html#rl.multi_agent_envs.MultiAgentOrderEnv.get_reward">[docs]</a>    <span class="k">def</span> <span class="nf">get_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trades</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">reward_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="n">prev_capital_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">agent_id</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">capital</span> <span class="k">for</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span>
+
+        <span class="k">for</span> <span class="n">trade</span> <span class="ow">in</span> <span class="n">trades</span><span class="p">:</span>
+            <span class="n">t_id_</span> <span class="o">=</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_ID</span><span class="p">]</span>
+            <span class="n">tc_id_</span> <span class="o">=</span> <span class="n">trade</span><span class="p">[</span><span class="n">TC_ID</span><span class="p">]</span>
+            <span class="n">t_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">traders_type</span><span class="p">[</span><span class="n">t_id_</span><span class="p">]</span>
+            <span class="n">tc_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">traders_type</span><span class="p">[</span><span class="n">tc_id_</span><span class="p">]</span>
+            <span class="n">t_id</span> <span class="o">=</span> <span class="n">t_type</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">t_id_</span><span class="p">)</span>
+            <span class="n">tc_id</span> <span class="o">=</span> <span class="n">tc_type</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">tc_id_</span><span class="p">)</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">t_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span>
+            <span class="n">tc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">tc_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span>
+
+            <span class="n">order_cost</span> <span class="o">=</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_PRICE</span><span class="p">]</span><span class="o">*</span><span class="n">trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">]</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">multiplier</span>
+
+            <span class="c1"># Trader bought</span>
+            <span class="k">if</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_SIDE</span><span class="p">]</span> <span class="o">==</span> <span class="n">BUY</span><span class="p">:</span>
+                <span class="n">t</span><span class="o">.</span><span class="n">funds</span> <span class="o">-=</span> <span class="n">order_cost</span>
+                <span class="n">t</span><span class="o">.</span><span class="n">possession</span> <span class="o">+=</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">]</span>
+
+                <span class="n">tc</span><span class="o">.</span><span class="n">funds</span> <span class="o">+=</span> <span class="n">order_cost</span>
+                <span class="n">tc</span><span class="o">.</span><span class="n">possession</span> <span class="o">-=</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">]</span>
+
+                <span class="c1">#Update order tracking of certain agent types</span>
+                <span class="k">if</span> <span class="n">tc_type</span> <span class="ow">in</span> <span class="n">order_tracking_types</span><span class="p">:</span>
+                    <span class="n">tc</span><span class="o">.</span><span class="n">update_order_tracking</span><span class="p">(</span><span class="n">SELL</span><span class="p">,</span> <span class="n">trade</span><span class="p">)</span>
+
+
+            <span class="c1"># Trader sold</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">t</span><span class="o">.</span><span class="n">funds</span> <span class="o">+=</span> <span class="n">order_cost</span>
+                <span class="n">t</span><span class="o">.</span><span class="n">possession</span> <span class="o">-=</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">]</span>
+
+                <span class="n">tc</span><span class="o">.</span><span class="n">funds</span> <span class="o">-=</span> <span class="n">order_cost</span>
+                <span class="n">tc</span><span class="o">.</span><span class="n">possession</span> <span class="o">+=</span> <span class="n">trade</span><span class="p">[</span><span class="n">T_SIZE</span><span class="p">]</span>
+
+                <span class="c1">#Update order tracking of certain agent types</span>
+                <span class="k">if</span> <span class="n">tc_type</span> <span class="ow">in</span> <span class="n">order_tracking_types</span><span class="p">:</span>
+                    <span class="n">tc</span><span class="o">.</span><span class="n">update_order_tracking</span><span class="p">(</span><span class="n">BUY</span><span class="p">,</span> <span class="n">trade</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">reward_dict</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">reward_dict</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="n">prev_capital_dict</span><span class="p">:</span>
+                <span class="n">prev_capital</span> <span class="o">=</span> <span class="n">prev_capital_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span>
+                <span class="n">new_capital</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">capital</span>
+                <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">new_capital</span><span class="p">,</span> <span class="n">prev_capital</span><span class="p">)</span>
+                <span class="n">reward_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="n">prev_capital_dict</span><span class="p">:</span>
+                <span class="n">prev_capital</span> <span class="o">=</span> <span class="n">prev_capital_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span>
+                <span class="n">new_capital</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">capital</span>
+                <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">new_capital</span><span class="p">,</span> <span class="n">prev_capital</span><span class="p">)</span>
+                <span class="n">reward_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">+=</span> <span class="n">r</span>
+        <span class="k">return</span> <span class="n">reward_dict</span></div>
+
+<div class="viewcode-block" id="MultiAgentOrderEnv.seed"><a class="viewcode-back" href="../../source/rl.html#rl.multi_agent_envs.MultiAgentOrderEnv.seed">[docs]</a>    <span class="k">def</span> <span class="nf">seed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="MultiAgentOrderEnv.get_obs"><a class="viewcode-back" href="../../source/rl.html#rl.multi_agent_envs.MultiAgentOrderEnv.get_obs">[docs]</a>    <span class="k">def</span> <span class="nf">get_obs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;quotes&#39;</span><span class="p">):</span>
+            <span class="n">obs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">obs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">ob</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_quotes</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span> <span class="o">=</span> <span class="n">obs</span>
+
+        <span class="n">obs_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">:</span>
+            <span class="n">obs_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">obs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="s1">&#39;env&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_private_variables</span><span class="p">()]</span>
+        <span class="k">return</span> <span class="n">obs_dict</span></div>
+
+<div class="viewcode-block" id="MultiAgentOrderEnv.render"><a class="viewcode-back" href="../../source/rl.html#rl.multi_agent_envs.MultiAgentOrderEnv.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;human&#39;</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">first_render</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span> <span class="o">=</span> <span class="n">get_multienv_app</span><span class="p">()</span>
+
+        <span class="n">MarketEnv</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># TODO investigate why a halt is n</span></div>
+
+<div class="viewcode-block" id="MultiAgentOrderEnv.get_private_variables"><a class="viewcode-back" href="../../source/rl.html#rl.multi_agent_envs.MultiAgentOrderEnv.get_private_variables">[docs]</a>    <span class="k">def</span> <span class="nf">get_private_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="k">pass</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">action_space</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">observation_space</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="get_actions_dict"><a class="viewcode-back" href="../../source/rl.html#rl.multi_agent_envs.get_actions_dict">[docs]</a><span class="k">def</span> <span class="nf">get_actions_dict</span><span class="p">(</span><span class="n">obs_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="n">actions_dict</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="n">obs_dict</span><span class="p">:</span>
+        <span class="n">agent_type</span><span class="p">,</span> <span class="n">trader_id</span> <span class="o">=</span> <span class="n">agent_id</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">agent_type</span> <span class="o">==</span> <span class="s1">&#39;dist&#39;</span><span class="p">:</span>
+            <span class="n">actions_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">gym</span><span class="o">.</span><span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mf">2.9</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">agent_type</span> <span class="o">==</span> <span class="s1">&#39;spread&#39;</span><span class="p">:</span>
+            <span class="n">actions_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">gym</span><span class="o">.</span><span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">agent_type</span> <span class="o">==</span> <span class="s1">&#39;market&#39;</span><span class="p">:</span>
+            <span class="n">actions_dict</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">gym</span><span class="o">.</span><span class="n">spaces</span><span class="o">.</span><span class="n">Discrete</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s1">&#39;Agent_type:</span><span class="si">{}</span><span class="s1"> is not implemented&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">agent_id</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">actions_dict</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span><span class="o">==</span><span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">trader_id</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">random_agent_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">agent_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+        <span class="n">random_agent_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;dist_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">trader_id</span><span class="p">))</span>
+        <span class="n">trader_id</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">agent_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;dist_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">trader_id</span><span class="p">))</span>
+        <span class="n">trader_id</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+        <span class="n">random_agent_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;spread_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">trader_id</span><span class="p">))</span>
+        <span class="n">trader_id</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">agent_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;spread_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">trader_id</span><span class="p">))</span>
+        <span class="n">trader_id</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+        <span class="n">random_agent_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;market_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">trader_id</span><span class="p">))</span>
+        <span class="n">trader_id</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">agent_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;market_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">trader_id</span><span class="p">))</span>
+        <span class="n">trader_id</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="n">env</span> <span class="o">=</span> <span class="n">MultiAgentOrderEnv</span><span class="p">(</span><span class="n">agent_list</span><span class="p">,</span> <span class="n">random_agent_list</span><span class="p">,</span> <span class="n">episode_seconds</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+        <span class="n">obs</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="c1">#print(env.quotes)</span>
+        <span class="n">done</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;__all__&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="n">done</span><span class="p">[</span><span class="s1">&#39;__all__&#39;</span><span class="p">]:</span>
+            <span class="n">action_dict</span> <span class="o">=</span> <span class="n">get_actions_dict</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
+            <span class="n">obs</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action_dict</span><span class="p">)</span>
+            <span class="c1">#print(env.quotes, env.market.time)</span>
+            <span class="n">env</span><span class="o">.</span><span class="n">render</span><span class="p">()</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Olle Dahlen.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.1',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

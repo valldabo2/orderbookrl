@@ -1,0 +1,360 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>orderbookrl.preprocessing package &mdash; OrderBookRL 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> OrderBookRL
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">orderbookrl.preprocessing package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-orderbookrl.preprocessing.ewma">orderbookrl.preprocessing.ewma module</a><ul>
+<li><a class="reference internal" href="#extras">Extras</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-orderbookrl.preprocessing.phi">orderbookrl.preprocessing.phi module</a></li>
+<li><a class="reference internal" href="#module-orderbookrl.preprocessing">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">OrderBookRL</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>orderbookrl.preprocessing package</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/source/orderbookrl.preprocessing.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="orderbookrl-preprocessing-package">
+<h1>orderbookrl.preprocessing package<a class="headerlink" href="#orderbookrl-preprocessing-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-orderbookrl.preprocessing.ewma">
+<span id="orderbookrl-preprocessing-ewma-module"></span><h2>orderbookrl.preprocessing.ewma module<a class="headerlink" href="#module-orderbookrl.preprocessing.ewma" title="Permalink to this headline">¶</a></h2>
+<p>Exponentially-weighted moving average.</p>
+<p>The class in this module wraps a Exponentially Weighted Moving Average
+algorithm (EWMA [1]), based on a talk on “Quantifying Abnormal Behavior” by
+VividCortex [2]. They provide an excellent discussion of EWMAs, along with an
+implementation in Go, in their github repo [3].</p>
+<p>This module contains a generic implementation of the EWMA algorithm. It has a
+default warm-up period of 1 and it uses an exponential decay. It supports a
+custom age which must be stored, and thus uses more memory. It will report a
+value of 0.0 until you have added the required number of samples to pass the
+warmup period. It uses some memory to store the number of samples added to it.
+As a result it uses a little over twice the memory of a simpler EWMA.</p>
+<p>The current implementation assumes an implicit time interval of 1.0 between
+every sample added. That is, the passage of time is treated as though it’s the
+same as the arrival of samples. If you need time-based decay when samples are
+not arriving precisely at set intervals, then this package will not support your
+needs at present.</p>
+<p class="rubric">Notes</p>
+<p>An exponentially weighted moving average is a way to continuously compute a
+type of average for a series of numbers, as the numbers arrive. After a value
+in the series is added to the average, its weight in the average decreases
+exponentially over time. This biases the average towards more recent data.
+EWMAs are useful for several reasons, chiefly their inexpensive computational
+and memory cost, as well as the fact that they represent the recent central
+tendency of the series of values.</p>
+<dl class="docutils">
+<dt>The overall algorithm works thus, in pseudocode:</dt>
+<dd><ul class="first last simple">
+<li>Multiply the next number in the series by alpha.</li>
+<li>Multiply the current value of the average by 1 minus alpha.</li>
+<li>Add the result of steps 1 and 2, and store it as the new current value of
+the average.</li>
+<li>Repeat for each number in the series.</li>
+</ul>
+</dd>
+</dl>
+<p>There are special-case behaviors for how to initialize the current value, and
+these vary between implementations. One approach is to start with the first
+value in the series; another is to average the first n or so values in the
+series using an arithmetic average, and then begin the incremental updating of
+the average. Each method has pros and cons.</p>
+<div class="section" id="extras">
+<h3>Extras<a class="headerlink" href="#extras" title="Permalink to this headline">¶</a></h3>
+<p>The EWMA algorithm requires a decay factor, alpha. The larger the alpha, the
+more the average is biased towards recent history. The alpha must be between 0
+and 1, and is typically a fairly small number, such as 0.04. Consider a
+fixed-size sliding-window moving average (not an exponentially weighted moving
+average) that averages over the previous N samples. What is the average age of
+each sample? It is N/2. Now suppose that you wish to construct a EWMA whose
+samples have the same average age. The formula to compute the alpha required
+for this is: alpha = 2/(N+1). Proof is in the book “Production and Operations
+Analysis” by Steven Nahmias. So, for example, if you have a time-series with
+samples once per second, and you want to get the moving average over the
+previous minute, you should use an alpha of 0.032786885 (i.e., 2 / (60 + 1)).</p>
+<p class="rubric">References</p>
+<p>[1]: <a class="reference external" href="http://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average">http://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average</a>
+[2]: <a class="reference external" href="https://vividcortex.com/blog/2013/07/23/a-fast-go-library-for-exponential">https://vividcortex.com/blog/2013/07/23/a-fast-go-library-for-exponential</a></p>
+<blockquote>
+<div>-moving-averages/</div></blockquote>
+<p>[3]: <a class="reference external" href="https://github.com/VividCortex/ewma">https://github.com/VividCortex/ewma</a></p>
+<dl class="class">
+<dt id="orderbookrl.preprocessing.ewma.EWMA">
+<em class="property">class </em><code class="descclassname">orderbookrl.preprocessing.ewma.</code><code class="descname">EWMA</code><span class="sig-paren">(</span><em>age=30.0</em>, <em>warmup=1</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/orderbookrl/preprocessing/ewma.html#EWMA"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orderbookrl.preprocessing.ewma.EWMA" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to calculate a moving average.</p>
+<p>Computes a moving average over a time-series stream of numbers. The average
+may be over a window or exponentially decaying. If no age is given, this
+function will return a default exponentially weighted implementation
+that consumes minimal memory. The age is related to the decay factor
+alpha by 2.0 / (<cite>age</cite> + 1). It signifies the average age of the samples as
+time goes to infinity.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>age</strong> (<em>numeric</em><em> (</em><em>default=30</em><em>)</em>) – By default, we average over a one-minute period, which means the
+average age of the metrics in the period is 30 seconds.</li>
+<li><strong>warmup</strong> (<em>numeric</em><em> (</em><em>default=1</em><em>)</em>) – For best results, the moving average should not be initialized to
+the samples it sees immediately. The book “Production and Operations
+Analysis” by Steven Nahmias suggests initializing the moving average
+to the mean of the first 10 samples. Until the Ewma has seen
+this many samples, it is not “ready” to be queried for the value of
+the moving average.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="orderbookrl.preprocessing.ewma.EWMA.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>age=30.0</em>, <em>warmup=1</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/orderbookrl/preprocessing/ewma.html#EWMA.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orderbookrl.preprocessing.ewma.EWMA.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize self.  See help(type(self)) for accurate signature.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="orderbookrl.preprocessing.ewma.EWMA.add">
+<code class="descname">add</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/orderbookrl/preprocessing/ewma.html#EWMA.add"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orderbookrl.preprocessing.ewma.EWMA.add" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds a value to the series and updates the moving average.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="orderbookrl.preprocessing.ewma.EWMA.value">
+<code class="descname">value</code><a class="headerlink" href="#orderbookrl.preprocessing.ewma.EWMA.value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the current value of the moving average.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="module-orderbookrl.preprocessing.phi">
+<span id="orderbookrl-preprocessing-phi-module"></span><h2>orderbookrl.preprocessing.phi module<a class="headerlink" href="#module-orderbookrl.preprocessing.phi" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="orderbookrl.preprocessing.phi.ofi_et">
+<code class="descclassname">orderbookrl.preprocessing.phi.</code><code class="descname">ofi_et</code><span class="sig-paren">(</span><em>b_t</em>, <em>b_t_1</em>, <em>v_b_t</em>, <em>v_b_t_1</em>, <em>a_t</em>, <em>a_t_1</em>, <em>v_a_t</em>, <em>v_a_t_1</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/orderbookrl/preprocessing/phi.html#ofi_et"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orderbookrl.preprocessing.phi.ofi_et" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="orderbookrl.preprocessing.phi.MarketVariables">
+<em class="property">class </em><code class="descclassname">orderbookrl.preprocessing.phi.</code><code class="descname">MarketVariables</code><span class="sig-paren">(</span><em>shape</em>, <em>options</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/orderbookrl/preprocessing/phi.html#MarketVariables"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orderbookrl.preprocessing.phi.MarketVariables" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ray.rllib.models.preprocessors.Preprocessor</span></code></p>
+<dl class="method">
+<dt id="orderbookrl.preprocessing.phi.MarketVariables.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>shape</em>, <em>options</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/orderbookrl/preprocessing/phi.html#MarketVariables.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orderbookrl.preprocessing.phi.MarketVariables.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize self.  See help(type(self)) for accurate signature.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="orderbookrl.preprocessing.phi.MarketVariables.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>observation</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/orderbookrl/preprocessing/phi.html#MarketVariables.transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orderbookrl.preprocessing.phi.MarketVariables.transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the preprocessed observation.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-orderbookrl.preprocessing">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-orderbookrl.preprocessing" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Olle Dahlen.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.1',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,15 @@
+cartpole-ppo:
+    env: CartPole-v0
+    run: PPO
+    stop:
+        episode_reward_mean: 200
+        time_total_s: 180
+    config:
+        num_workers: 3
+        num_sgd_iter: 8
+        sgd_batchsize: 256
+        model:
+          use_lstm: True
+
+    local_dir: ~/PycharmProjects/orderbookrl/logs/test
+    checkpoint_freq: 1

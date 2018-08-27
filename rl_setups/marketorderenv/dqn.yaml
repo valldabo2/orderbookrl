@@ -1,0 +1,36 @@
+dqn:
+    env: MarketOrderEnv-v0
+    run: DQN
+    stop:
+        time_total_s: 36000
+    config:
+        env_config:
+          max_sequence_skip: 150
+          random_start: True
+          max_episode_time: 5hours
+
+        gamma: 0.999
+        lr: .00001
+        learning_starts: 10000
+        buffer_size: 100000
+        sample_batch_size: 10000
+        train_batch_size: 10240
+        schedule_max_timesteps: 1000000
+        exploration_final_eps: .05
+        exploration_fraction: .05
+        target_network_update_freq: 20000
+        timesteps_per_iteration: 10000
+        hiddens: [64, 64]
+
+        model:
+          custom_preprocessor: mv
+          custom_options:
+            fast_macd_l: 1200
+            slow_macd_l: 2400
+            ofi_l: 1000
+            mid_l: 100
+
+    local_dir: ~/Documents/OrderBookRL/logs/marketorderenv
+    checkpoint_freq: 5
+
+

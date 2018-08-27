@@ -1,0 +1,517 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>rl.market_env &mdash; OrderBookRL 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> OrderBookRL
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">OrderBookRL</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>rl.market_env</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for rl.market_env</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">abc</span>
+<span class="kn">from</span> <span class="nn">custom_inherit</span> <span class="k">import</span> <span class="n">DocInheritMeta</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">webbrowser</span>
+<span class="kn">from</span> <span class="nn">collections.__init__</span> <span class="k">import</span> <span class="n">deque</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">requests</span>
+
+<span class="kn">from</span> <span class="nn">order_book.constants</span> <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">order_book.market</span> <span class="k">import</span> <span class="n">ExternalMarket</span>
+
+<span class="kn">from</span> <span class="nn">cy_order_book.order_book</span> <span class="k">import</span> <span class="n">CyExternalMarket</span>
+
+
+<div class="viewcode-block" id="get_market"><a class="viewcode-back" href="../../source/rl.html#rl.market_env.get_market">[docs]</a><span class="k">def</span> <span class="nf">get_market</span><span class="p">(</span><span class="n">market_type</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Returns a market based on the parameter.</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    market_type : str</span>
+<span class="sd">        The type of market to return</span>
+<span class="sd">    kwargs</span>
+<span class="sd">        Additional settings for the market</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    market : Market</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">market_type</span> <span class="o">==</span> <span class="s1">&#39;pyext&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ExternalMarket</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">market_type</span> <span class="o">==</span> <span class="s1">&#39;cyext&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">CyExternalMarket</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MarketEnv"><a class="viewcode-back" href="../../source/rl.html#rl.market_env.MarketEnv">[docs]</a><span class="k">class</span> <span class="nc">MarketEnv</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">DocInheritMeta</span><span class="p">(</span><span class="n">style</span><span class="o">=</span><span class="s2">&quot;numpy&quot;</span><span class="p">,</span> <span class="n">abstract_base_class</span><span class="o">=</span><span class="kc">True</span><span class="p">)):</span>
+    <span class="sd">&quot;&quot;&quot; A market environment extending the `OpenAI gym class &lt;https://github.com/openai/gym/blob/master/gym/core.py/&gt;`_ .</span>
+
+<span class="sd">    The main functions are the step and reset functions. In the step function the agent sends orders and receives a reward</span>
+<span class="sd">    based on the orders/trades.</span>
+
+<span class="sd">    A basic rendering function using `Dash &lt;https://plot.ly/products/dash/&gt;`_ is implemented. This opens a Flask server</span>
+<span class="sd">    in another thread that renders different information about the market.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    capital : float</span>
+<span class="sd">        The capital of the agent</span>
+<span class="sd">    funds : float</span>
+<span class="sd">        The cash/funds of the agent</span>
+<span class="sd">    possession : float</span>
+<span class="sd">        The size of the asset the agent possesses</span>
+<span class="sd">    price_n : int</span>
+<span class="sd">        Number of price points to render back in time.</span>
+<span class="sd">    trades_list : list</span>
+<span class="sd">        All trades</span>
+
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Set this in SOME subclasses</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;render.modes&#39;</span><span class="p">:</span> <span class="p">[]}</span>
+    <span class="n">reward_range</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">))</span>
+    <span class="n">spec</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="MarketEnv.__init__"><a class="viewcode-back" href="../../source/rl.html#rl.market_env.MarketEnv.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_type</span><span class="o">=</span><span class="s1">&#39;cyext&#39;</span><span class="p">,</span> <span class="n">market_setup</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">tick_size</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">ob_type</span><span class="o">=</span><span class="s1">&#39;cy_order_book&#39;</span><span class="p">,</span> <span class="n">order_level_type</span><span class="o">=</span><span class="s1">&#39;cydeque&#39;</span><span class="p">,</span>
+                 <span class="n">order_levels_type</span><span class="o">=</span><span class="s1">&#39;cylist&#39;</span><span class="p">,</span> <span class="n">price_as_ints</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">initial_funds</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span> <span class="n">T_ID</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        market_type : str</span>
+<span class="sd">            The type of market to be used</span>
+<span class="sd">        market_setup : dict</span>
+<span class="sd">            Parameters for the market</span>
+<span class="sd">        initial_funds : float</span>
+<span class="sd">            The initial cash of the agent</span>
+<span class="sd">        T_ID : int</span>
+<span class="sd">            The agent&#39;s trader id</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Market</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_market_type</span> <span class="o">=</span> <span class="n">market_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_market_setup</span> <span class="o">=</span> <span class="n">market_setup</span>
+
+        <span class="c1"># Init Funds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">capital</span> <span class="o">=</span> <span class="n">initial_funds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">funds</span> <span class="o">=</span> <span class="n">initial_funds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initial_funds</span> <span class="o">=</span> <span class="n">initial_funds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">possession</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># Rendering</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">open_tab</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">first_render</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">price_n</span> <span class="o">=</span> <span class="mi">10000</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">trades_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">T_ID</span> <span class="o">=</span> <span class="n">T_ID</span></div>
+
+<div class="viewcode-block" id="MarketEnv.step"><a class="viewcode-back" href="../../source/rl.html#rl.market_env.MarketEnv.step">[docs]</a>    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sends orders based on the agents action and receives a reward based on trades that have occurred.</span>
+
+<span class="sd">        The action is first converted to messages to the market. Then the messages are sent and trades are received.</span>
+<span class="sd">        The reward is then calculated based on the trades.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        action : numpy.array</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        obs : list[tuple, tuple]</span>
+<span class="sd">            The current quotes of the market and private information about the agents portfolio</span>
+<span class="sd">        reward : float</span>
+<span class="sd">        done : bool</span>
+<span class="sd">            If the episode has finished</span>
+<span class="sd">        info : dict</span>
+<span class="sd">            Additional information</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">messages</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_messages</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+        <span class="n">trades</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_messages</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
+        <span class="n">reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_reward</span><span class="p">(</span><span class="n">trades</span><span class="p">)</span>
+        <span class="n">obs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_obs</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">obs</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">info</span></div>
+
+<div class="viewcode-block" id="MarketEnv.get_messages"><a class="viewcode-back" href="../../source/rl.html#rl.market_env.MarketEnv.get_messages">[docs]</a>    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span> <span class="nf">get_messages</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot; Returns messages based on the action received.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        action : numpy.array</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        messages: tuple</span>
+
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+<div class="viewcode-block" id="MarketEnv.get_reward"><a class="viewcode-back" href="../../source/rl.html#rl.market_env.MarketEnv.get_reward">[docs]</a>    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span> <span class="nf">get_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trades</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot; Returns a reward based on trades</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        trades : list</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        reward : float</span>
+
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+<div class="viewcode-block" id="MarketEnv.send_messages"><a class="viewcode-back" href="../../source/rl.html#rl.market_env.MarketEnv.send_messages">[docs]</a>    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span> <span class="nf">send_messages</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sends all the messages to the market</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        messages : tuple</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        trades : list</span>
+<span class="sd">        done : bool</span>
+<span class="sd">            If the episode has finished or not.</span>
+<span class="sd">        info : dict</span>
+<span class="sd">            Extra information about the environment</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+<div class="viewcode-block" id="MarketEnv.get_private_variables"><a class="viewcode-back" href="../../source/rl.html#rl.market_env.MarketEnv.get_private_variables">[docs]</a>    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span> <span class="nf">get_private_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot; Returns private variables of for the agent to observe. For example the possession of the agent.</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        private_variables : tuple</span>
+
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+<div class="viewcode-block" id="MarketEnv.get_obs"><a class="viewcode-back" href="../../source/rl.html#rl.market_env.MarketEnv.get_obs">[docs]</a>    <span class="k">def</span> <span class="nf">get_obs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot; Returns an observation of the market. Currently the quotes.</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        observation : tuple</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;quotes&#39;</span><span class="p">):</span>
+            <span class="n">obs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">obs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">ob</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_quotes</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span> <span class="o">=</span> <span class="n">obs</span>
+
+        <span class="n">obs</span> <span class="o">=</span> <span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_private_variables</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">obs</span></div>
+
+<div class="viewcode-block" id="MarketEnv.reset"><a class="viewcode-back" href="../../source/rl.html#rl.market_env.MarketEnv.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Resets the environment with a market or creates a new one. Also resets the render app if needed.</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        market : Market</span>
+<span class="sd">            If to use a specific market instead of a newly created one.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        observation : tuple</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">market</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">market</span> <span class="o">=</span> <span class="n">market</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">market</span> <span class="o">=</span> <span class="n">get_market</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_market_type</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_market_setup</span><span class="p">)</span>
+
+        <span class="n">obs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_obs</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">capital</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_funds</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="n">use_reloader</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;ask&#39;</span><span class="p">,</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">price_n</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;bid&#39;</span><span class="p">,</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">price_n</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">price_n</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;sellbook&#39;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;buybook&#39;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;trades_&#39;</span><span class="p">,</span> <span class="p">[])</span>
+
+        <span class="k">return</span> <span class="n">obs</span></div>
+
+<div class="viewcode-block" id="MarketEnv.render"><a class="viewcode-back" href="../../source/rl.html#rl.market_env.MarketEnv.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Renders the environment in a dash app.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">first_render</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="n">use_reloader</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;ask&#39;</span><span class="p">,</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">price_n</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;bid&#39;</span><span class="p">,</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">price_n</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">price_n</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;sellbook&#39;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;buybook&#39;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;trades_&#39;</span><span class="p">,</span> <span class="p">[])</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">app_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="n">run_server</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">app_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_tab</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">open_tab</span> <span class="o">=</span> <span class="n">webbrowser</span><span class="o">.</span><span class="n">open_new</span><span class="p">(</span><span class="s1">&#39;http://127.0.0.1:8050&#39;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">first_render</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="n">time_</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
+        <span class="n">ask</span><span class="p">,</span> <span class="n">ask_vol</span><span class="p">,</span> <span class="n">bid</span><span class="p">,</span> <span class="n">bid_vol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="n">ask</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ask</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="n">bid</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">time_</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="n">trades_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trades_list</span><span class="p">[</span><span class="o">-</span><span class="mi">40</span><span class="p">:]</span>
+        <span class="n">ask</span><span class="p">,</span> <span class="n">ask_vol</span><span class="p">,</span> <span class="n">bid</span><span class="p">,</span> <span class="n">bid_vol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="mi">50</span>
+        <span class="n">buy_book</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">bid</span> <span class="o">-</span> <span class="n">i</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">ob</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_level</span><span class="p">(</span><span class="n">BUY</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span><span class="o">.</span><span class="n">size</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">IndexError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+            <span class="n">buy_book</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">size</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="mi">50</span>
+        <span class="n">sell_book</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">ask</span> <span class="o">+</span> <span class="n">i</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">market</span><span class="o">.</span><span class="n">ob</span><span class="o">.</span><span class="n">price_levels</span><span class="o">.</span><span class="n">get_level</span><span class="p">(</span><span class="n">SELL</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span><span class="o">.</span><span class="n">size</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">IndexError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="n">sell_book</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">size</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="n">buybook</span> <span class="o">=</span> <span class="n">buy_book</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="o">.</span><span class="n">sellbook</span> <span class="o">=</span> <span class="n">sell_book</span></div>
+
+<div class="viewcode-block" id="MarketEnv.close"><a class="viewcode-back" href="../../source/rl.html#rl.market_env.MarketEnv.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Shuts down the render app if needed.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_app</span><span class="p">:</span>
+            <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s1">&#39;http://127.0.0.1:8050/shutdown&#39;</span><span class="p">)</span>
+        <span class="k">return</span></div>
+
+<div class="viewcode-block" id="MarketEnv.seed"><a class="viewcode-back" href="../../source/rl.html#rl.market_env.MarketEnv.seed">[docs]</a>    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span> <span class="nf">seed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Sets the seed for this env&#39;s random number generator(s).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span></div>
+
+    <span class="c1"># Set these in ALL subclasses</span>
+    <span class="nd">@property</span>
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span> <span class="nf">action_space</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;gym.spaces : The action space of the environment.&quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span> <span class="nf">observation_space</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;gym.spaces : The obervation space of the environment.&quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">unwrapped</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Completely unwrap this env.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            gym.Env: The base non-wrapped gym.MarketEnv instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;&lt;</span><span class="si">{}</span><span class="s1"> instance&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;&lt;</span><span class="si">{}</span><span class="s1">&lt;</span><span class="si">{}</span><span class="s1">&gt;&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="o">.</span><span class="n">id</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Olle Dahlen.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.1',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
