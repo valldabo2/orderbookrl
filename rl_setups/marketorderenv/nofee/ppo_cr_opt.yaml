@@ -1,63 +1,80 @@
-hpsearch-ppo:
-    env: DistEnv-v0
-    run: PPO
+ppo-cr-opt:
+    env: MarketOrderEnvOpt-v0
+    run: PPOCUMRET
     stop:
-        time_total_s: 30
+        time_total_s:  3600 # 4*60*60
     config:
+        env_config:
+          max_sequence_skip: 15000
+          random_start: True
+          max_episode_time: 5hours
+          min_capital_pct: 0.2
+          taker_fee: 0
+
         # Model
         # If true, use the Generalized Advantage Estimator (GAE)
-        # with a value function, see https://arxiv.org/pdf/1506.02438.pdf.
-        use_gae: True
+        use_gae: False
+        modify_cumret: True
         # GAE(lambda) parameter
-        lambda: 1.0
+        gamma: 0.999
         # Initial coefficient for KL divergence
         kl_coeff: 0.2
         # Override model config
         model:
           # Whether to use LSTM model
-          use_lstm: False
+          #use_lstm: True
           # Max seq length for LSTM training.
-          max_seq_len: 20
+          max_seq_len: 100
+          # Lstm cell size
+          lstm_cell_size: 64
+          # if Fully connected net
+          fcnet_hiddens: [64, 64]
+          # Free log std
+          free_log_std: False
+          # Whether to squash the action output to space range
+          squash_to_range: True
+
           custom_preprocessor: mv
           custom_options:
             fast_macd_l: 1200
             slow_macd_l: 2400
             ofi_l: 1000
-            mid_l: 100
+            mid_l: 1000
         # Which observation filter to apply to the observation
         observation_filter: MeanStdFilter
 
+        clip_rewards: False
         # Optimization
         # Number of timesteps collected for each SGD round
-        timesteps_per_batch: 512
+        train_batch_size: 60000
+        # Whether to rollout "complete_episodes" or "truncate_episodes"
+        batch_mode: complete_episodes
         # Number of SGD iterations in each outer loop
-        num_sgd_iter:
-          grid_search: [4, 8, 12]
+        num_sgd_iter: 25
         # Stepsize of SGD
-        sgd_stepsize: 5e-5
+        lr: 0.0005
         # Total SGD batch size across all devices for SGD (multi-gpu only)
-        sgd_batchsize: 128
+        sgd_minibatch_size: 10240
+        sample_batch_size: 10000
         # Coefficient of the value function loss
         vf_loss_coeff: 1.0
         # Coefficient of the entropy regularizer
-        entropy_coeff: 0.0
+        entropy_coeff: 0.00000001
         # PPO clip parameter
-        clip_param: 0.3
+        clip_param: 0.1
         # Target value for KL divergence
         kl_target: 0.01
         # Use the sync samples optimizer instead of the multi-gpu one
-        simple_optimizer: False
-
+        simple_optimizer: True
         # Resources
-        num_workers: 1
+        num_workers: 6
         # Number of GPUs to use for SGD
         num_gpus: 0
         # Whether to allocate GPUs for workers (if > 0).
         num_gpus_per_worker: 0
         # Whether to allocate CPUs for workers (if > 0).
         num_cpus_per_worker: 1
-        # Whether to rollout "complete_episodes" or "truncate_episodes"
-        batch_mode: truncate_episodes
 
-    local_dir: ~/Documents/OrderBookRL/logs/distenv
+    local_dir: /media/olle/DATA/Projects/orderbookrl/logs/marketorderenvnofee
+    checkpoint_freq: 5
 

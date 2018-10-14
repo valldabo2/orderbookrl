@@ -4,6 +4,12 @@ impala:
     stop:
         time_total_s: 36000
     config:
+      env_config:
+        max_sequence_skip: 15000
+        random_start: True
+        max_episode_time: 7hours
+        min_capital_pct: 0.1
+        taker_fee: 0
 
       vtrace: True
       vtrace_clip_rho_threshold: 1.0
@@ -11,19 +17,18 @@ impala:
 
       # System params.
       sample_batch_size: 10240
-      train_batch_size: 20480
+      train_batch_size: 40960
       min_iter_time_s: 30
-      summarize: False
       gpu: True
-      num_workers: 2
+      num_workers: 6
       num_cpus_per_worker: 1
       num_gpus_per_worker: 0
 
       # Learning params.
-      grad_clip: 40.0
+      grad_clip: 30.0
       # either "adam" or "rmsprop"
-      #opt_type: adam
-      #lr: 0.0005
+      opt_type: adam
+      lr: 0.005
       # rmsprop considered
       #decay: 0.99
       #momentum: 0.0
@@ -48,7 +53,8 @@ impala:
           ofi_l: 1000
           mid_l: 100
 
-    local_dir: ~/Documents/OrderBookRL/logs/marketorderenv
-    checkpoint_freq: 5
+
+    local_dir: /media/olle/DATA/Projects/orderbookrl/logs/marketorderenvnofee
+    checkpoint_freq: 10
 
 

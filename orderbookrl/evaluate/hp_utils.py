@@ -22,7 +22,7 @@ def get_data(logs_dir, cols):
 def get_dataframe(data_dict, hpcols):
     temp = {}
     for k, v in data_dict.items():
-        temp[k] = v['data']['episode_reward_mean']
+        temp[k] = v['data']['cap_mean']
     temp = pd.DataFrame(temp)
 
     for item in data_dict.values():

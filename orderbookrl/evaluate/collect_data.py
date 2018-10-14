@@ -20,7 +20,7 @@ def load_env(env_id, env_config, model_config):
     env_config['max_sequence_skip'] = int(10e10)  # TODO Fix
     env_config['random_start'] = False
     env_config['max_episode_time'] = '100 days'
-
+    env_config['taker_fee'] = 0
     env = get_env(env_id, env_config)
     env = ModelCatalog.get_preprocessor_as_wrapper(env, options=model_config)
     return env
@@ -48,7 +48,7 @@ def run_through_all_data(env, agent):
         k += 1
         time = env.env.market.time
         if k % 10000 == 0:
-            print(time)
+            print(time, env.env.capital/env.env.initial_funds)
 
         times.append(time)
         rewards.append(reward)
@@ -77,7 +77,7 @@ def run_through_all_data(env, agent):
     return result, trades, states, actions, rewards, quotes
 
 
-def load_env_agent(agent_id, path, checkpoint):
+def load_env_agent(agent_id, path, checkpoint, data_path=None):
     checkpoint_path = path + 'checkpoint-' + str(checkpoint)
     params_path = path + 'params.json'
     result_path = path + 'result.json'
@@ -90,6 +90,9 @@ def load_env_agent(agent_id, path, checkpoint):
         result_ = json.loads(f.readline())
         env_id = result_['config']['env']
         env_config = result_['config']['env_config']
+
+    if data_path != None:
+        env_config['data_path'] = data_path
 
     env = load_env(env_id, env_config, model_config)
     config['num_workers'] = 1

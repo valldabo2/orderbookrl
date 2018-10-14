@@ -1,7 +1,14 @@
 from orderbookrl.preprocessing.ewma import EWMA
 from collections import deque
-import numpy as np
 from ray.rllib.models.preprocessors import Preprocessor
+from ray.rllib.models.catalog import ModelCatalog
+from orderbookmdp.rl.market_order_envs import MarketOrderEnv
+from orderbookmdp.order_book.constants import Q_ASK, Q_BID
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.linear_model import ElasticNet, SGDClassifier
+import time
+import numpy as np
+import pandas as pd
 
 
 def ofi_et(b_t, b_t_1, v_b_t, v_b_t_1, a_t, a_t_1, v_a_t, v_a_t_1):
@@ -23,7 +30,6 @@ class MarketVariables(Preprocessor):
         self.ofi = EWMA(age=ofi_l)
         mid_l = custom_options.get('mid_l') or 100
         self.mid_q = deque(maxlen=mid_l)
-
         self.shape = shape.shape
 
     def transform(self, observation):
@@ -62,3 +68,89 @@ class MarketVariables(Preprocessor):
         self.prev_ask_vol = ask_vol
 
         return (ofi_, vol_mb, macd, mid_std) + private_variables
+
+
+class PredictiveMarketVariables(MarketVariables):
+    def __init__(self, shape, options):
+        super(PredictiveMarketVariables, self).__init__(shape, options)
+        self.shape = (self.shape[0] + 3,)
+        self.observations = deque(maxlen=15000)
+        self.mids = deque(maxlen=15000)
+        self.regressor = ElasticNet(warm_start=True, alpha=20, l1_ratio=0)
+        self.classifier = SGDClassifier(warm_start=True, max_iter=100, alpha=0.001, l1_ratio=0.5, penalty='elasticnet')
+        self.is_fitted = False
+        self.train_k = 1
+
+    def transform(self, observation):
+        if self.train_k == 1:
+            prev_mid = (observation[0][Q_BID] + observation[0][Q_ASK]) / 2
+        else:
+            prev_mid =  (self.prev_ask + self.prev_bid)/2
+
+        obs = MarketVariables.transform(self, observation)
+        mid = (observation[0][Q_BID] + observation[0][Q_ASK])/2
+
+        self.mids.append(mid)
+        self.observations.append((obs[0:4]))
+
+        self.train_k += 1
+        if not self.is_fitted:
+            if self.train_k == 1000:
+                self.train()
+        elif self.train_k % 10000 == 0:
+            self.train()
+
+        if self.is_fitted:
+            mid_diff = (mid - prev_mid)/mid
+            return obs + self.predict(obs[0:4] + (mid_diff,)) + (mid_diff,)
+        else:
+            return obs + (0, 0, 0)  # Zero percentage change and zero class (no change)
+
+    def train(self):
+        y = pd.Series(list(self.mids))
+        y_pct = y.pct_change().fillna(0)
+        y_sign = np.sign(y_pct)
+
+        X = np.array(self.observations)
+        X = np.concatenate([X, y_pct.shift(-1).fillna(0).values.reshape(-1, 1)], axis=1)
+        X_scaled = MinMaxScaler(feature_range=(-1, 1)).fit_transform(X)
+        #t = time.time()
+        self.regressor.fit(X_scaled, y_pct)
+        #print('Reg fit time:{:.2f}'.format(time.time()-t))
+
+        #t = time.time()
+        self.classifier.fit(X_scaled, y_sign)
+        #print('Class fit time:{:.2f}'.format(time.time()-t))
+
+        self.is_fitted = True
+
+    def predict(self, obs):
+        obs = np.array(obs).reshape(1, -1)
+        return self.regressor.predict(obs)[0], self.classifier.predict(obs)[0]
+
+
+if __name__ == '__main__':
+    ModelCatalog.register_custom_preprocessor('mv_pred', PredictiveMarketVariables)
+    env = MarketOrderEnv(order_paths='../../data/feather/', snapshot_paths='../../data/snap_json/',
+                         max_sequence_skip=10000, max_episode_time='20hours', random_start=False)
+    options = {'custom_preprocessor': 'mv_pred',
+               'custom_options': {
+                   'fast_macd_l': 1200,
+                   'slow_macd_l': 2400,
+                   'ofi_l': 1000,
+                   'mid_l': 1000}
+               }
+    env = ModelCatalog.get_preprocessor_as_wrapper(env, options)
+    t = time.time()
+    for i in range(2):
+        k = 0
+        obs = env.reset()
+        done = False
+        while not done:
+            action = 0
+            obs, reward, done, info = env.step(action)
+            k += 1
+            if k % 100 == 0:
+                print(obs, env.env.market.time, reward)
+        print('stops', env.env.market.time)
+    print(time.time() - t)
