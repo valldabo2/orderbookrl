@@ -72,6 +72,6 @@ ppo:
         num_cpus_per_worker: 1
 
 
-    local_dir: /media/olle/DATA/Projects/orderbookrl/logs/marketorderenvnofee
+    #local_dir: /media/olle/DATA/Projects/orderbookrl/logs/marketorderenvnofee
     checkpoint_freq: 10
 

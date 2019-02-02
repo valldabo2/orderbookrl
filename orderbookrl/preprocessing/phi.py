@@ -18,7 +18,11 @@ def ofi_et(b_t, b_t_1, v_b_t, v_b_t_1, a_t, a_t_1, v_a_t, v_a_t_1):
 
 
 class MarketVariables(Preprocessor):
-    def __init__(self, shape, options):
+    def _init_shape(self, obs_space, options):
+
+        obs_shape = obs_space.shape
+        n_private_variables = obs_shape[0] - 4
+
         custom_options = options['custom_options']
         self.k = 0
         macd_fast_l = custom_options.get('fast_macd_l') or 1200
@@ -30,7 +34,12 @@ class MarketVariables(Preprocessor):
         self.ofi = EWMA(age=ofi_l)
         mid_l = custom_options.get('mid_l') or 100
         self.mid_q = deque(maxlen=mid_l)
-        self.shape = shape.shape
+        self.shape = (4 + n_private_variables,)
+
+        print(n_private_variables)
+        print(self.shape)
+
+        return self.shape
 
     def transform(self, observation):
 
@@ -133,6 +142,7 @@ if __name__ == '__main__':
     ModelCatalog.register_custom_preprocessor('mv_pred', PredictiveMarketVariables)
     env = MarketOrderEnv(order_paths='../../data/feather/', snapshot_paths='../../data/snap_json/',
                          max_sequence_skip=10000, max_episode_time='20hours', random_start=False)
+
     options = {'custom_preprocessor': 'mv_pred',
                'custom_options': {
                    'fast_macd_l': 1200,
@@ -140,7 +150,9 @@ if __name__ == '__main__':
                    'ofi_l': 1000,
                    'mid_l': 1000}
                }
-    env = ModelCatalog.get_preprocessor_as_wrapper(env, options)
+
+    phi = MarketVariables(env.observation_space, options)
+
     t = time.time()
     for i in range(2):
         k = 0
@@ -149,8 +161,11 @@ if __name__ == '__main__':
         while not done:
             action = 0
             obs, reward, done, info = env.step(action)
+
+            obs_ = phi.transform(obs)
             k += 1
             if k % 100 == 0:
-                print(obs, env.env.market.time, reward)
-        print('stops', env.env.market.time)
+                print(obs_, env.market.time, reward)
+        print('stops', env.market.time)
+
     print(time.time() - t)

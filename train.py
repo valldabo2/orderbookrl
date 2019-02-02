@@ -1,18 +1,12 @@
-#!/usr/bin/env python
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import argparse
-import yaml
-import logging
+#!/usr/ort logging
 
 import ray
 from ray.tune.config_parser import make_parser, resources_to_json
 from ray.tune.tune import _make_scheduler, run_experiments
-
+import argparse
+import yaml
 from orderbookrl.utils import get_env
+from ray import tune
 
 EXAMPLE_USAGE = """
 Training example via executable:
@@ -65,6 +59,13 @@ def create_parser(parser_creator=None):
     return parser
 
 
+def on_episode_end(info):
+    episode = info["episode"]
+    env = info['env'].get_unwrapped()[0]
+    capital_return = (env.capital - env.initial_funds)/env.initial_funds
+    episode.custom_metrics['capital_return'] = capital_return
+
+
 def run(args, parser):
     if args.config_file:
         with open(args.config_file) as f:
@@ -91,19 +92,24 @@ def run(args, parser):
             }
         }
 
+    key = list(experiments.keys())[0]
+    experiments[key]["config"]["callbacks"] = {
+                    "on_episode_end": tune.function(on_episode_end)
+
+                }
+
     for exp in experiments.values():
         if not exp.get("run"):
             parser.error("the following arguments are required: --run")
         if not exp.get("env") and not exp.get("config", {}).get("env"):
             parser.error("the following arguments are required: --env")
 
-    #logging.basicConfig(handlers=[logging.FileHandler('logs.log'),logging.StreamHandler()],
-    #                    format='%(asctime)s %(message)s', level=logging.INFO)
-
     ray.init(
         redis_address=args.redis_address,
         num_cpus=args.ray_num_cpus,
-        num_gpus=args.ray_num_gpus)
+        num_gpus=args.ray_num_gpus,
+        #object_store_memory=int(25*10**9) #30gb
+    )
     run_experiments(
         experiments,
         scheduler=_make_scheduler(args),
