@@ -17,9 +17,19 @@ def ofi_et(b_t, b_t_1, v_b_t, v_b_t_1, a_t, a_t_1, v_a_t, v_a_t_1):
     return et
 
 
-class MarketVariables(Preprocessor):
+class Zeros(Preprocessor):
     def _init_shape(self, obs_space, options):
+        return (1,)
 
+    def transform(self, observation):
+        return (0,)
+
+
+class MarketVariables(Preprocessor):
+
+    shape = (6,)
+
+    def _init_shape(self, obs_space, options):
         obs_shape = obs_space.shape
         n_private_variables = obs_shape[0] - 4
 
@@ -35,9 +45,6 @@ class MarketVariables(Preprocessor):
         mid_l = custom_options.get('mid_l') or 100
         self.mid_q = deque(maxlen=mid_l)
         self.shape = (4 + n_private_variables,)
-
-        print(n_private_variables)
-        print(self.shape)
 
         return self.shape
 
@@ -77,6 +84,27 @@ class MarketVariables(Preprocessor):
         self.prev_ask_vol = ask_vol
 
         return (ofi_, vol_mb, macd, mid_std) + private_variables
+
+
+class MarketVariablesSingleL(MarketVariables):
+    def _init_shape(self, obs_space, options):
+        obs_shape = obs_space.shape
+        n_private_variables = obs_shape[0] - 4
+
+        custom_options = options['custom_options']
+        self.k = 0
+        macd_fast_l = custom_options.get('l') * 10
+        macd_slow_l = custom_options.get('l')
+        self.macd_fast = EWMA(age=macd_fast_l)
+        self.macd_slow = EWMA(age=macd_slow_l)
+        self.macd_slow_n = macd_slow_l
+        ofi_l = custom_options.get('l')
+        self.ofi = EWMA(age=ofi_l)
+        mid_l = custom_options.get('l')
+        self.mid_q = deque(maxlen=mid_l)
+        self.shape = (4 + n_private_variables,)
+
+        return self.shape
 
 
 class PredictiveMarketVariables(MarketVariables):

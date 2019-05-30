@@ -1,24 +1,27 @@
-hpsearch-ppoadv:
+hpsearch-ppoadv-2:
     env: MarketOrderEnv-v0
     run: PPOADV
+#    resources_per_trial:
+#      cpu: 24
+#      gpiu: 0
+    num_samples: 2
     stop:
         time_total_s: 1800 # 60*60*10
-        episode_reward_mean: 2
     config:
         # Env configuration
         env_config:
           max_sequence_skip: 1500
           random_start: True
-          max_episode_time: 5hours
+          max_episode_time: 2hours
 
         # Model
         # If true, use the Generalized Advantage Estimator (GAE)
         use_gae: True
         # GAE(lambda) parameter
         lambda:
-          grid_search: [0.6, 0.4]
+          grid_search: [0.8, 0.6, 0.4]
         gamma:
-          grid_search: [0.99, 0.90]
+          grid_search: [0.99, 0.90, 0.8]
         # Initial coefficient for KL divergence
         kl_coeff: 0.4
         # Override model config
@@ -42,22 +45,27 @@ hpsearch-ppoadv:
         clip_rewards: True
         # Optimization
         # Number of timesteps collected for each SGD round
-        train_batch_size: 40960
+        train_batch_size:
+          grid_search: [40000, 80000]
         # Whether to rollout "complete_episodes" or "truncate_episodes"
-        batch_mode: complete_episodes
+        batch_mode: truncate_episodes
         # Number of SGD iterations in each outer loop
-        num_sgd_iter: 10
+        num_sgd_iter:
+          grid_search: [5, 10]
         # Stepsize of SGD
-        lr: 0.05
+        lr:
+          grid_search: [0.05, 0.005]
         # Total SGD batch size across all devices for SGD (multi-gpu only)
         sgd_minibatch_size: 10240
         sample_batch_size: 10240
         # Coefficient of the value function loss
         vf_loss_coeff: 1.0
         # Coefficient of the entropy regularizer
-        entropy_coeff: 0.1
+        entropy_coeff:
+            grid_search: [0.1, 0.01]
         # PPO clip parameter
-        clip_param: 0.3
+        clip_param:
+            grid_search: [0.3, 0.1]
         # Target value for KL divergence
         kl_target: 0.01
         # Use the sync samples optimizer instead of the multi-gpu one

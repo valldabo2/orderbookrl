@@ -1,5 +1,5 @@
 from ray.rllib.agents.ppo import PPOAgent
-from ray.rllib.agents.ppo.ppo_policy_graph import PPOPolicyGraph
+#from ray.rllib.agents.ppo.ppo_policy_graph import PPOPolicyGraph
 import numpy as np
 from ray.rllib.evaluation.postprocessing import discount
 from ray.rllib.evaluation.sample_batch import SampleBatch
@@ -50,8 +50,17 @@ def compute_advantages(rollout, last_r, gamma=0.9, lambda_=1.0, use_gae=True):
 
 
 class AdvPPOGraph(PPOPolicyGraph):
-    def postprocess_trajectory(self, sample_batch, other_agent_batches=None):
-        last_r = 0.0
+    def postprocess_trajectory(self, sample_batch, other_agent_batches=None, episode=None):
+
+        completed = sample_batch["dones"][-1]
+        if completed:
+            last_r = 0.0
+        else:
+            next_state = []
+            for i in range(len(self.model.state_in)):
+                next_state.append([sample_batch["state_out_{}".format(i)][-1]])
+            last_r = self._value(sample_batch["new_obs"][-1], *next_state)
+
         batch = compute_advantages(
             sample_batch,
             last_r,

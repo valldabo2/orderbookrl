@@ -73,10 +73,10 @@ ppo-adv:
         # Whether to allocate GPUs for workers (if > 0).
         num_gpus_per_worker: 0
         # Whether to allocate CPUs for workers (if > 0).
-        num_cpus_per_worker: 1
+        num_cpus_per_worker: 3
 
     #local_dir: /media/olle/DATA/Projects/orderbookrl/templogs/marketorderenvnofee
     local_dir: /home/valldabo/Documents/orderbookrl/logs/ 
-    checkpoint_freq: 4
+    checkpoint_freq: 5
     #restore: /media/olle/DATA/Projects/orderbookrl/logs/marketorderenvnofee/ppo-adv/PPOADV_MarketOrderEnv-v0_0_2018-09-16_18-31-34496vyw6v/checkpoint-60
 

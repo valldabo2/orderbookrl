@@ -4,13 +4,50 @@ from ray.rllib.models import ModelCatalog
 from orderbookrl.utils import get_env
 import json
 import pandas as pd
+import gym
+import numpy as np
+import os
+
+
+class _RLlibPreprocessorWrapper(gym.ObservationWrapper):
+    """Adapts a RLlib preprocessor for use as an observation wrapper."""
+
+    def __init__(self, env, preprocessor):
+        super(_RLlibPreprocessorWrapper, self).__init__(env)
+        self.preprocessor = preprocessor
+
+        from gym.spaces.box import Box
+        self.observation_space = Box(
+            -1.0, 1.0, preprocessor.shape, dtype=np.float32)
+
+    def observation(self, observation):
+        return self.preprocessor.transform(observation)
+
+
+def get_preprocessor_as_wrapper(env, options={}):
+    """Returns a preprocessor as a gym observation wrapper.
+    Args:
+        env (gym.Env): The gym environment to wrap.
+        options (dict): Options to pass to the preprocessor.
+    Returns:
+        wrapper (gym.ObservationWrapper): Preprocessor in wrapper form.
+    """
+
+    preprocessor = ModelCatalog.get_preprocessor(env, options)
+    return _RLlibPreprocessorWrapper(env, preprocessor)
 
 
 def load_agent(agent_id, env_id, checkpoint, config):
-    ray.init()
     cls = get_agent_class(agent_id)
     if config.get('num_workers'):
         config['num_workers'] = 1
+
+    config.pop('grad_clip')
+    config['sample_batch_size'] = 1
+    config.pop('callbacks')
+    config.pop('clip_rewards')
+
+
     agent = cls(env=env_id, config=config, logger_creator=None)
     agent.restore(checkpoint)
     return agent
@@ -22,7 +59,7 @@ def load_env(env_id, env_config, model_config):
     env_config['max_episode_time'] = '100 days'
     env_config['taker_fee'] = 0
     env = get_env(env_id, env_config)
-    env = ModelCatalog.get_preprocessor_as_wrapper(env, options=model_config)
+    env = get_preprocessor_as_wrapper(env, options=model_config)
     return env
 
 
@@ -79,6 +116,8 @@ def run_through_all_data(env, agent):
 
 def load_env_agent(agent_id, path, checkpoint, data_path=None):
     checkpoint_path = path + 'checkpoint-' + str(checkpoint)
+
+    path = os.path.dirname(os.path.dirname(path)) + '/'
     params_path = path + 'params.json'
     result_path = path + 'result.json'
 
@@ -102,10 +141,10 @@ def load_env_agent(agent_id, path, checkpoint, data_path=None):
 
 
 if __name__ == '__main__':
-    ray.init()
+    #ray.init()
     agent_id = 'PPO'
-    path = '../../logs/marketorderenv/ppo/PPO_MarketOrderEnv-v0_0_2018-08-21_22-57-42w6gr_35y/'
-    checkpoint = 190
+    path = '../../logs/marketorderenv/ppo-long-run/PPO_MarketOrderEnv-v0_4_2019-05-22_13-14-52roo05q4q/'
+    checkpoint = 10
 
     env, agent = load_env_agent(agent_id, path, checkpoint)
     result, trades, states, actions, rewards, quotes = run_through_all_data(env, agent)

@@ -1,0 +1,6 @@
+* Hyper parameter search PPO MarketorderEnv
+1. Run aggressive search of parameters
+   - Save model 
+2. Continue search with RL parameters using the previous HP search best model
+3. Train for a long period of time, using Population based training?
+4. Evaluate with and withouth transaction cost

@@ -1,7 +1,7 @@
 #!/usr/ort logging
 
 import ray
-from ray.tune.config_parser import make_parser, resources_to_json
+from ray.tune.config_parser import make_parser
 from ray.tune.tune import _make_scheduler, run_experiments
 import argparse
 import yaml
@@ -62,40 +62,24 @@ def create_parser(parser_creator=None):
 def on_episode_end(info):
     episode = info["episode"]
     env = info['env'].get_unwrapped()[0]
-    capital_return = (env.capital - env.initial_funds)/env.initial_funds
-    episode.custom_metrics['capital_return'] = capital_return
+    if hasattr(env, 'capital'):
+        capital_return = (env.capital - env.initial_funds)/env.initial_funds
+        episode.custom_metrics['capital_return'] = capital_return
 
 
 def run(args, parser):
-    if args.config_file:
-        with open(args.config_file) as f:
-            experiments = yaml.load(f)
 
-        if hasattr(args, 'restore'):
-            key = list(experiments.keys())[0]
-            experiments[key]['restore'] = args.restore
-    else:
-        # Note: keep this in sync with tune/config_parser.py
-        experiments = {
-            args.experiment_name: {  # i.e. log to ~/ray_results/default
-                "run": args.run,
-                "checkpoint_freq": args.checkpoint_freq,
-                "local_dir": args.local_dir,
-                "trial_resources": (
-                    args.trial_resources and
-                    resources_to_json(args.trial_resources)),
-                "stop": args.stop,
-                "config": dict(args.config, env=args.env),
-                "restore": args.restore,
-                "repeat": args.repeat,
-                "upload_dir": args.upload_dir,
-            }
-        }
+    with open(args.config_file) as f:
+        experiments = yaml.load(f)
+
+    if hasattr(args, 'restore'):
+        key = list(experiments.keys())[0]
+        experiments[key]['restore'] = args.restore
+
 
     key = list(experiments.keys())[0]
     experiments[key]["config"]["callbacks"] = {
                     "on_episode_end": tune.function(on_episode_end)
-
                 }
 
     for exp in experiments.values():
@@ -108,7 +92,8 @@ def run(args, parser):
         redis_address=args.redis_address,
         num_cpus=args.ray_num_cpus,
         num_gpus=args.ray_num_gpus,
-        #object_store_memory=int(25*10**9) #30gb
+        #object_store_memory=20000 * (2**20), # 100000 #int(25*10**9) #30gb
+        #redis_max_memory=5000 * (2**20)
     )
     run_experiments(
         experiments,
